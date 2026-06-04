@@ -79,14 +79,14 @@ export default function TabLayout() {
         }}>
 
         <Tabs.Screen
-          name="DashboardScreen"
+          name="dashboard"
           options={{
-            title: 'Dashboard',
+            title: 'Início',
             headerShown: false,
             tabBarLabel: ({ focused, color }) => (
               <View style={styles.labelContainer}>
                 <Text style={[styles.iconLabel, { color: focused ? color : COLORS.textLight }]} allowFontScaling={false}>
-                  Dashboard
+                  Início
                 </Text>
                 <View style={[styles.labelIndicator, { width: focused ? 26 : 0, backgroundColor: focused ? color : 'transparent' }]} />
               </View>
@@ -96,7 +96,7 @@ export default function TabLayout() {
         />
 
         <Tabs.Screen
-          name="RemessasScreen"
+          name="remessas"
           options={{
             title: 'Remessas',
             headerShown: false,
@@ -113,7 +113,7 @@ export default function TabLayout() {
         />
 
         <Tabs.Screen
-          name="ClientesScreen"
+          name="clientes"
           options={{
             title: 'Clientes',
             headerShown: false,
@@ -130,7 +130,7 @@ export default function TabLayout() {
         />
 
         <Tabs.Screen
-          name="RelatoriosScreen"
+          name="relatorios"
           options={{
             title: 'Relatórios',
             headerShown: false,
@@ -147,14 +147,14 @@ export default function TabLayout() {
         />
 
         <Tabs.Screen
-          name="ConfigScreen"
+          name="config"
           options={{
             title: 'Configurações',
             headerShown: false,
             tabBarLabel: ({ focused, color }) => (
               <View style={styles.labelContainer}>
                 <Text style={[styles.iconLabel, { color: focused ? color : COLORS.textLight }]} allowFontScaling={false}>
-                  Config
+                  Opcões
                 </Text>
                 <View style={[styles.labelIndicator, { width: focused ? 26 : 0, backgroundColor: focused ? color : 'transparent' }]} />
               </View>

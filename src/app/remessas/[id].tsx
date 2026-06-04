@@ -181,7 +181,7 @@ export default function DetalhesRemessaScreen() {
         subtitle={formatDate(remessa.data)}
         actions={
           <>
-            <TouchableOpacity style={styles.editCardButton} onPress={() => router.push(`/remessas/EditarRemessaScreen?id=${id}`)}>
+            <TouchableOpacity style={styles.editCardButton} onPress={() => router.push(`/remessas/editar?id=${id}`)}>
               <Edit size={20} color="#2563eb" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.deleteCardButton} onPress={() => setDeleteModalVisible(true)}>
@@ -324,7 +324,7 @@ export default function DetalhesRemessaScreen() {
                 getProdutoNome={getProdutoNome}
                 showDate={true}
                 showActions={true}
-                onEdit={(v) => router.push(`/vendas/EditarVendaScreen?id=${v.id}`)}
+                onEdit={(v) => router.push(`/vendas/editar?id=${v.id}`)}
                 onDelete={(v) => {
                   setVendaToDelete(v);
                   setDeleteVendaModalVisible(true);
@@ -348,7 +348,7 @@ export default function DetalhesRemessaScreen() {
         {/* Botão Nova Venda */}
                 <TouchableOpacity 
           style={styles.novaVendaButton}
-          onPress={() => router.push('/vendas/NovaVendaScreen')}
+                  onPress={() => router.push('/vendas/nova')}
         >
           <Text style={styles.novaVendaText}>+ Registrar Nova Venda</Text>
         </TouchableOpacity>

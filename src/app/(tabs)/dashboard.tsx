@@ -192,7 +192,7 @@ export default function DashboardScreen() {
 
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => router.push('/vendas/NovaVendaScreen')}
+        onPress={() => router.push('/vendas/nova')}
       >
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>

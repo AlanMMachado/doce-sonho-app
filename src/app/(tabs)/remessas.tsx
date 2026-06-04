@@ -124,7 +124,7 @@ export default function RemessasScreen() {
             </Text>
             <TouchableOpacity 
               style={styles.emptyButton}
-              onPress={() => router.push('/remessas/NovaRemessaScreen')}
+              onPress={() => router.push('/remessas/nova')}
             >
               <Text style={styles.emptyButtonText}>+ Criar Primeira Remessa</Text>
             </TouchableOpacity>
@@ -221,7 +221,7 @@ export default function RemessasScreen() {
                     </TouchableOpacity>
                     <TouchableOpacity 
                       style={styles.editCardButton} 
-                      onPress={() => router.push(`/remessas/EditarRemessaScreen?id=${remessa.id}`)}
+                      onPress={() => router.push(`/remessas/editar?id=${remessa.id}`)}
                     >
                       <Edit size={16} color="#2563eb" />
                     </TouchableOpacity>
@@ -245,7 +245,7 @@ export default function RemessasScreen() {
       
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => router.push('/remessas/NovaRemessaScreen')}
+        onPress={() => router.push('/remessas/nova')}
       >
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>

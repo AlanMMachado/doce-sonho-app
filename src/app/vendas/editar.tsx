@@ -6,55 +6,97 @@ import { RemessaService } from '@/service/remessaService';
 import { SyncService } from '@/service/syncService';
 import { VendaService, recalcularTodosPrecos } from '@/service/vendaService';
 import { Produto } from '@/types/Produto';
-import { ItemVendaForm } from '@/types/Venda';
+import { ItemVendaForm, Venda } from '@/types/Venda';
 import { useFocusEffect } from '@react-navigation/native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { Dimensions, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ActivityIndicator, Text, TextInput } from 'react-native-paper';
 
 const { width } = Dimensions.get('window');
 
-export default function NovaVendaScreen() {
+export default function EditarVendaScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { dispatch } = useApp();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [venda, setVenda] = useState<Venda | null>(null);
   const [itens, setItens] = useState<ItemVendaForm[]>([]);
   const [formData, setFormData] = useState({
     cliente: '',
     status: 'OK' as 'OK' | 'PENDENTE',
-    metodo_pagamento: 'Pix'
+    metodo_pagamento: 'PIX'
   });
 
-  useFocusEffect(
-    useCallback(() => {
-      carregarProdutos();
-    }, [])
-  );
-
-  const carregarProdutos = async () => {
+  const carregarDados = async () => {
     try {
       setLoading(true);
+
+      // Carregar venda
+      const vendaData = await VendaService.getById(parseInt(id));
+      if (!vendaData) {
+        alert('Venda não encontrada');
+        router.back();
+        return;
+      }
+      setVenda(vendaData);
+
+      // Obter IDs dos produtos que estão sendo editados
+      const produtosEmEdicao = new Set(vendaData.itens.map(item => item.produto_id));
+
+      // Carregar produtos disponíveis
       const remessasAtivas = await RemessaService.getAtivas();
       const todosProdutos: Produto[] = [];
-      
+
       for (const remessa of remessasAtivas) {
         const produtosRemessa = await RemessaService.getProdutosByRemessaId(remessa.id);
-        const produtosDisponiveis = produtosRemessa.filter(p => 
-          p.quantidade_inicial - p.quantidade_vendida > 0
-        );
+        const produtosDisponiveis = produtosRemessa.filter(p => {
+          const temEstoque = p.quantidade_inicial - p.quantidade_vendida > 0;
+          const estaEmEdicao = produtosEmEdicao.has(p.id);
+          return temEstoque || estaEmEdicao; // Incluir se tem estoque OU se está sendo editado
+        });
         todosProdutos.push(...produtosDisponiveis);
       }
-      
+
       setProdutos(todosProdutos);
+
+      // Carregar itens da venda
+      const itensForm: ItemVendaForm[] = vendaData.itens.map(item => ({
+        produto_id: item.produto_id.toString(),
+        quantidade: item.quantidade.toString(),
+        preco_base: item.preco_base.toFixed(2),
+        preco_desconto: item.preco_desconto ? item.preco_desconto.toFixed(2) : undefined,
+        subtotal: item.subtotal.toFixed(2),
+        quantidade_com_desconto: item.preco_desconto ? (Math.floor(item.quantidade / (item.preco_desconto ? 3 : 1)) * (item.preco_desconto ? 3 : 1)).toString() : '0',
+        quantidade_sem_desconto: item.preco_desconto ? (item.quantidade % (item.preco_desconto ? 3 : 1)).toString() : item.quantidade.toString()
+      }));
+
+      setItens(itensForm);
+
+      // Preencher formulário
+      setFormData({
+        cliente: vendaData.cliente,
+        status: vendaData.status,
+        metodo_pagamento: vendaData.metodo_pagamento || 'PIX'
+      });
     } catch (error) {
-      console.error('Erro ao carregar produtos:', error);
+      console.error('Erro ao carregar dados:', error);
+      alert('Erro ao carregar dados da venda');
+      router.back();
     } finally {
       setLoading(false);
     }
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      if (id) {
+        carregarDados();
+      }
+    }, [id])
+  );
 
   const setProductQuantidade = (produtoId: string, quantidade: number) => {
     const produto = produtos.find(p => p.id.toString() === produtoId);
@@ -110,23 +152,19 @@ export default function NovaVendaScreen() {
       return total + subtotal;
     }, 0);
   };
-  
-  const handleSubmit = async () => {
-    if (!formData.cliente.trim()) {
-      alert('Por favor, informe o nome do cliente');
-      return;
-    }
 
+  const handleSubmit = async () => {
     const itensValidos = itens.filter(item => {
       const produto = produtos.find(p => p.id.toString() === item.produto_id);
-      return produto && item.quantidade.trim() && parseInt(item.quantidade) > 0 && item.subtotal.trim() && parseFloat(item.subtotal) >= 0;
+      return produto && item.quantidade.trim() && parseInt(item.quantidade) > 0 && item.subtotal.trim() && parseFloat(item.subtotal) > 0;
     });
 
-    if (itensValidos.length === 0) {
-      alert('Adicione pelo menos um produto válido');
+    if (itensValidos.length === 0 || !formData.cliente.trim() || !formData.metodo_pagamento) {
+      alert('Por favor, preencha todos os campos obrigatórios');
       return;
     }
 
+    // Validar estoque disponível
     for (const item of itensValidos) {
       const produto = produtos.find(p => p.id.toString() === item.produto_id);
       if (produto) {
@@ -141,10 +179,9 @@ export default function NovaVendaScreen() {
 
     try {
       setSaving(true);
-      
-      const vendaData = {
+      await VendaService.update(parseInt(id), {
         cliente: formData.cliente.trim(),
-        data: new Date().toISOString(),
+        data: venda?.data || new Date().toISOString(),
         status: formData.status,
         metodo_pagamento: formData.metodo_pagamento,
         itens: itensValidos.map(item => {
@@ -159,18 +196,21 @@ export default function NovaVendaScreen() {
             subtotal: parseFloat(item.subtotal)
           };
         })
-      };
+      });
 
-      const venda = await VendaService.create(vendaData);
-      
-      // Sincronizar cliente imediatamente (esperar conclusão)
-      await SyncService.syncClienteFromVenda(venda);
-      
-      dispatch({ type: 'ADD_VENDA', payload: venda });
+      // Atualizar no contexto
+      const vendaAtualizada = await VendaService.getById(parseInt(id));
+      if (vendaAtualizada) {
+        dispatch({ type: 'UPDATE_VENDA', payload: vendaAtualizada });
+        
+        // Sincronizar cliente imediatamente (esperar conclusão)
+        await SyncService.syncClienteFromVenda(vendaAtualizada);
+      }
+
       router.back();
     } catch (error) {
-      console.error('Erro ao salvar venda:', error);
-      alert('Erro ao salvar venda. Tente novamente.');
+      console.error('Erro ao atualizar venda:', error);
+      alert('Erro ao atualizar venda. Tente novamente.');
     } finally {
       setSaving(false);
     }
@@ -179,14 +219,14 @@ export default function NovaVendaScreen() {
   if (produtos.length === 0) {
     return (
       <View style={styles.container}>
-        <Header title="Nova Venda" subtitle="Registre uma venda rapidamente" />
+        <Header title="Editar Venda" subtitle="Atualize os dados da venda" />
         <View style={styles.emptyState}>
           <Text style={styles.emptyIcon}>📦</Text>
           <Text style={styles.emptyText}>Nenhum produto disponível</Text>
           <Text style={styles.emptySubtext}>Crie uma remessa com produtos primeiro</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.emptyButton}
-            onPress={() => router.push('/remessas/NovaRemessaScreen')}
+            onPress={() => router.push('/remessas/nova')}
           >
             <Text style={styles.emptyButtonText}>+ Criar Remessa</Text>
           </TouchableOpacity>
@@ -197,7 +237,7 @@ export default function NovaVendaScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Nova Venda" subtitle="Registre uma venda rapidamente" />
+      <Header title="Editar Venda" subtitle="Atualize os dados da venda" />
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.mediumBlue} />
@@ -238,7 +278,7 @@ export default function NovaVendaScreen() {
                           {produto.tipo}
                           {produto.sabor ? ` - ${produto.sabor}` : ''}
                         </Text>
-                        <View>
+                        <View style={styles.produtoListStock}>
                           <Text style={styles.produtoListStockText}>
                             {estoque} em estoque
                           </Text>
@@ -246,37 +286,37 @@ export default function NovaVendaScreen() {
                       </View>
 
                       {/* Seletor de Quantidade */}
-                        <View style={styles.produtoListQuantityControl}>
-                          <TouchableOpacity
-                            onPress={() => setProductQuantidade(produto.id.toString(), quantidadeSelecionada - 1)}
-                            style={[
-                              styles.quantityButtonSmall,
-                              quantidadeSelecionada <= 0 && styles.quantityButtonSmallDisabled
-                            ]}
-                            disabled={quantidadeSelecionada <= 0}
-                          >
-                            <Text style={styles.quantityButtonSmallText}>−</Text>
-                          </TouchableOpacity>
-                          <TextInput
-                            value={quantidadeSelecionada.toString()}
-                            onChangeText={(text) => {
-                              const num = parseInt(text) || 0;
-                              setProductQuantidade(produto.id.toString(), num);
-                            }}
-                            keyboardType="numeric"
-                            style={styles.quantityInputSmall}
-                            mode="outlined"
-                            outlineColor={COLORS.borderGray}
-                            activeOutlineColor={COLORS.mediumBlue}
-                          />
-                          <TouchableOpacity
-                            onPress={() => setProductQuantidade(produto.id.toString(), quantidadeSelecionada + 1)}
-                            style={styles.quantityButtonSmall}
-                            disabled={quantidadeSelecionada >= estoque}
-                          >
-                            <Text style={styles.quantityButtonSmallText}>+</Text>
-                          </TouchableOpacity>
-                        </View>
+                      <View style={styles.produtoListQuantityControl}>
+                        <TouchableOpacity
+                          onPress={() => setProductQuantidade(produto.id.toString(), quantidadeSelecionada - 1)}
+                          style={[
+                            styles.quantityButtonSmall,
+                            quantidadeSelecionada <= 0 && styles.quantityButtonSmallDisabled
+                          ]}
+                          disabled={quantidadeSelecionada <= 0}
+                        >
+                          <Text style={styles.quantityButtonSmallText}>−</Text>
+                        </TouchableOpacity>
+                        <TextInput
+                          value={quantidadeSelecionada.toString()}
+                          onChangeText={(text) => {
+                            const num = parseInt(text) || 0;
+                            setProductQuantidade(produto.id.toString(), num);
+                          }}
+                          keyboardType="numeric"
+                          style={styles.quantityInputSmall}
+                          mode="outlined"
+                          outlineColor={COLORS.borderGray}
+                          activeOutlineColor={COLORS.mediumBlue}
+                        />
+                        <TouchableOpacity
+                          onPress={() => setProductQuantidade(produto.id.toString(), quantidadeSelecionada + 1)}
+                          style={styles.quantityButtonSmall}
+                          disabled={quantidadeSelecionada >= estoque}
+                        >
+                          <Text style={styles.quantityButtonSmallText}>+</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   );
                 })}
@@ -387,7 +427,7 @@ export default function NovaVendaScreen() {
               </View>
             </View>
 
-            {/* Resumo da Venda */}
+            {/* Resumo */}
             {calcularTotal() > 0 && (
               <View style={styles.summaryCard}>
                 <View style={styles.summaryHeader}>
@@ -460,7 +500,7 @@ export default function NovaVendaScreen() {
                 {saving ? (
                   <ActivityIndicator color={COLORS.white} size={20} />
                 ) : (
-                  <Text style={styles.submitButtonText}>Confirmar Venda</Text>
+                  <Text style={styles.submitButtonText}>Atualizar Venda</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -603,16 +643,13 @@ const styles = StyleSheet.create({
     color: COLORS.textDark,
     marginBottom: 4,
   },
-  produtoListNameDisabled: {
-    color: COLORS.textMedium,
+  produtoListStock: {
+    marginTop: 4,
   },
   produtoListStockText: {
     fontSize: 12,
     color: COLORS.textMedium,
     fontWeight: '500',
-  },
-  produtoListStockTextDisabled: {
-    color: COLORS.textMedium,
   },
   produtoListQuantityControl: {
     flexDirection: 'row',
@@ -655,30 +692,11 @@ const styles = StyleSheet.create({
   priceCard: {
     flex: 1,
   },
-  priceLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  promotionBadge: {
-    backgroundColor: COLORS.pink,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  promotionBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: COLORS.white,
-    letterSpacing: 0.5,
-  },
   priceInput: {
     backgroundColor: COLORS.white,
   },
-  priceInputPromotion: {
-    backgroundColor: 'rgba(236, 72, 153, 0.05)',
-  },
+
+  // PAGAMENTO
   paymentGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -714,27 +732,23 @@ const styles = StyleSheet.create({
   },
   statusButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: 10,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: COLORS.borderGray,
     backgroundColor: COLORS.white,
     alignItems: 'center',
   },
   statusButtonPaid: {
-    borderColor: COLORS.green,
+    borderColor: 'transparent',
     backgroundColor: COLORS.green,
   },
   statusButtonPending: {
-    borderColor: COLORS.warning,
+    borderColor: 'transparent',
     backgroundColor: COLORS.warning,
   },
-  statusEmoji: {
-    fontSize: 24,
-    marginBottom: 6,
-  },
   statusLabel: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
     color: COLORS.textDark,
   },
@@ -791,21 +805,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: COLORS.textDark,
-    marginBottom: 6,
+    marginBottom: 2,
   },
   summaryItemDetails: {
     fontSize: 12,
     color: COLORS.textMedium,
   },
-  summaryPromoText: {
-    color: COLORS.pink,
-    fontWeight: '700',
-    fontSize: 12,
-  },
   summaryItemAmount: {
     fontSize: 14,
     fontWeight: '700',
     color: COLORS.mediumBlue,
+  },
+  summaryPromoText: {
+    color: COLORS.pink,
+    fontWeight: '700',
+    fontSize: 12, 
   },
   summaryTotal: {
     flexDirection: 'row',
@@ -825,6 +839,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.mediumBlue,
   },
+
+  // BOTÕES DE AÇÃO
   actionButtons: {
     flexDirection: 'row',
     gap: 12,

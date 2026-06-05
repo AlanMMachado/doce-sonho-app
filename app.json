@@ -1,15 +1,16 @@
 {
   "expo": {
-    "name": "vendas-app",
-    "slug": "trufas-app",
+    "name": "Doce Sonho",
+    "slug": "doce-sonho",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "vendasapp",
+    "scheme": "docesonho",
     "userInterfaceStyle": "automatic",
     "icon": "./assets/images/icon.png",
     "ios": {
       "supportsTablet": true,
-      "icon": "./assets/images/icon.png"
+      "icon": "./assets/images/icon.png",
+      "bundleIdentifier": "com.alanmmachado.docesonho"
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +18,7 @@
         "backgroundColor": "#FFFFFF"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.alanmmachado.vendasapp"
+      "package": "com.alanmmachado.docesonho"
     },
     "web": {
       "output": "static"

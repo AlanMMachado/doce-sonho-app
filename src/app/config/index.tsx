@@ -14,14 +14,14 @@ export default function ConfigScreen() {
       title: 'Produtos',
       description: 'Configure tipos de produto, preços base e promoções',
       onPress: () => router.push('/config/produtos'),
-      icon: Package
+      icon: Package,
     },
     {
       title: 'Metas',
       description: 'Configure metas diárias de vendas',
       onPress: () => router.push('/config/metas'),
-      icon: Settings
-    }
+      icon: Settings,
+    },
   ];
 
   return (
@@ -44,12 +44,8 @@ export default function ConfigScreen() {
                     <IconComponent size={24} color={COLORS.mediumBlue} />
                   </View>
                   <View style={styles.configText}>
-                    <Text style={styles.configTitle}>
-                      {item.title}
-                    </Text>
-                    <Text style={styles.configDescription}>
-                      {item.description}
-                    </Text>
+                    <Text style={styles.configTitle}>{item.title}</Text>
+                    <Text style={styles.configDescription}>{item.description}</Text>
                   </View>
                 </View>
                 <ChevronRight size={20} color={COLORS.textLight} />

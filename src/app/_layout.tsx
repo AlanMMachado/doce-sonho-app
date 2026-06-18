@@ -2,8 +2,8 @@ import { AppProvider } from '@/contexts/AppContext';
 import { initDatabase } from '@/database/db';
 import { Nunito_400Regular, Nunito_500Medium, Nunito_600SemiBold, Nunito_700Bold, useFonts } from '@expo-google-fonts/nunito';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import * as SplashScreen from 'expo-splash-screen';
 import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { MD3LightTheme, Provider as PaperProvider } from 'react-native-paper';
@@ -117,8 +117,11 @@ export default function RootLayout() {
             <Stack.Screen name="vendas/editar" options={{ headerShown: false }} />
             <Stack.Screen name="remessas/nova" options={{ headerShown: false }} />
             <Stack.Screen name="remessas/editar" options={{ headerShown: false }} />
+            <Stack.Screen name="config/index" options={{ headerShown: false }} />
             <Stack.Screen name="config/produtos" options={{ headerShown: false }} />
             <Stack.Screen name="config/metas" options={{ headerShown: false }} />
+            <Stack.Screen name="config/novo-produto" options={{ headerShown: false }} />
+            <Stack.Screen name="config/editar-produto" options={{ headerShown: false }} />
             <Stack.Screen name="clientes/[nome]" options={{ headerShown: false }} />
             <Stack.Screen name="remessas/[id]" options={{ headerShown: false }} />
           </Stack>

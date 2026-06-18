@@ -1,10 +1,11 @@
+import ConfigMenuButton from '@/components/ConfigMenuButton';
 import Header from '@/components/Header';
 import { COLORS } from '@/constants/Colors';
+import { useScreenData } from '@/hooks/useScreenData';
 import { ClienteService } from '@/service/clienteService';
 import { ProdutoService } from '@/service/produtoService';
 import { Cliente } from '@/types/Cliente';
 import { Produto } from '@/types/Produto';
-import { useScreenData } from '@/hooks/useScreenData';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useRouter } from 'expo-router';
@@ -21,8 +22,6 @@ export default function ClientesScreen() {
 
   const carregarDados = async () => {
     try {
-
-      // Buscar todos os clientes
       const clientesData = await ClienteService.getAll();
 
       // Buscar produtos para referência
@@ -45,8 +44,7 @@ export default function ClientesScreen() {
       }));
 
       setClientes(clientesConvertidos);
-
-      // Carregar estatísticas
+      
       const estatisticas = await ClienteService.getEstatisticas();
       setResumo({
         totalClientes: estatisticas.totalClientes,
@@ -84,6 +82,7 @@ export default function ClientesScreen() {
       <Header
         title="Clientes"
         subtitle={`${resumo.totalClientes} clientes ativos`}
+        actions={<ConfigMenuButton />}
       />
 
       {loading ? (

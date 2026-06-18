@@ -1,3 +1,4 @@
+import ConfigMenuButton from '@/components/ConfigMenuButton';
 import Header from '@/components/Header';
 import VendaCard from '@/components/VendaCard';
 import { COLORS } from '@/constants/Colors';
@@ -81,9 +82,10 @@ export default function DashboardScreen() {
 
   return (
     <View style={styles.container}>
-      <Header 
-        title="Dashboard" 
+      <Header
+        title="Dashboard"
         subtitle={format(new Date(), "dd 'de' MMMM", { locale: ptBR })}
+        actions={<ConfigMenuButton />}
       />
       {loading ? (
         <View style={styles.loadingContainer}>

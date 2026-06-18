@@ -1,3 +1,4 @@
+import ConfigMenuButton from '@/components/ConfigMenuButton';
 import Header from '@/components/Header';
 import { COLORS } from '@/constants/Colors';
 import { RelatorioService } from '@/service/relatorioService';
@@ -25,7 +26,7 @@ export default function RelatoriosScreen() {
   if (!relatorio) {
     return (
       <View style={styles.container}>
-        <Header title="Relatórios" subtitle="Análise de desempenho" />
+        <Header title="Relatórios" subtitle="Análise de desempenho" actions={<ConfigMenuButton />} />
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Erro ao carregar relatório</Text>
           <TouchableOpacity style={styles.retryButton} onPress={carregarRelatorio}>
@@ -38,7 +39,7 @@ export default function RelatoriosScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Relatórios" subtitle="Análise de desempenho" />
+      <Header title="Relatórios" subtitle="Análise de desempenho" actions={<ConfigMenuButton />} />
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.mediumBlue} />

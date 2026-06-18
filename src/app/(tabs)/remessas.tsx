@@ -1,4 +1,5 @@
 import ConfirmationModal from '@/components/ConfirmationModal';
+import ConfigMenuButton from '@/components/ConfigMenuButton';
 import Header from '@/components/Header';
 import { COLORS } from '@/constants/Colors';
 import { RemessaService } from '@/service/remessaService';
@@ -86,9 +87,10 @@ export default function RemessasScreen() {
 
   return (
     <View style={styles.container}>
-      <Header 
-        title="Remessas" 
+      <Header
+        title="Remessas"
         subtitle={`${remessas.length} ${remessas.length === 1 ? 'remessa' : 'remessas'}`}
+        actions={<ConfigMenuButton />}
       />
 
       {loading ? (

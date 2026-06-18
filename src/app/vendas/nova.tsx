@@ -557,8 +557,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textMedium,
   },
-  
-  // INPUT
   inputContainer: {
     marginBottom: 16,
   },
@@ -571,8 +569,6 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: COLORS.softGray,
   },
-
-  // PRODUTOS - LISTA LAYOUT
   produtosListContainer: {
     gap: 10,
   },

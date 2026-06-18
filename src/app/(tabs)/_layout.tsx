@@ -1,15 +1,13 @@
 import { Tabs } from 'expo-router';
-import { ChartNoAxesColumnIncreasing, FileSpreadsheet, Package, Settings, Users } from 'lucide-react-native';
+import { ChartNoAxesColumnIncreasing, FileSpreadsheet, Package, Users } from 'lucide-react-native';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native';
 import { COLORS } from '../../constants/Colors';
 
-// Layout das tabs (barra inferior)
 const ICON_COMPONENTS: Record<string, any> = {
   'chart': ChartNoAxesColumnIncreasing,
   'file': FileSpreadsheet,
   'package': Package,
-  'settings': Settings,
   'user': Users,
 };
 
@@ -45,9 +43,6 @@ function FileIcon(props: any) {
 function PackageIcon(props: any) {
   return <TabIcon {...props} icon={'package'} />;
 }
-function SettingsIcon(props: any) {
-  return <TabIcon {...props} icon={'settings'} />;
-}
 function UserIcon(props: any) {
   return <TabIcon {...props} icon={'user'} />;
 }
@@ -81,12 +76,12 @@ export default function TabLayout() {
         <Tabs.Screen
           name="dashboard"
           options={{
-            title: 'Início',
+            title: 'Dashboard',
             headerShown: false,
             tabBarLabel: ({ focused, color }) => (
               <View style={styles.labelContainer}>
                 <Text style={[styles.iconLabel, { color: focused ? color : COLORS.textLight }]} allowFontScaling={false}>
-                  Início
+                  Dashboard
                 </Text>
                 <View style={[styles.labelIndicator, { width: focused ? 26 : 0, backgroundColor: focused ? color : 'transparent' }]} />
               </View>
@@ -143,23 +138,6 @@ export default function TabLayout() {
               </View>
             ),
             tabBarIcon: ({ color, focused }) => <FileIcon color={color} focused={focused} />,
-          }}
-        />
-
-        <Tabs.Screen
-          name="config"
-          options={{
-            title: 'Configurações',
-            headerShown: false,
-            tabBarLabel: ({ focused, color }) => (
-              <View style={styles.labelContainer}>
-                <Text style={[styles.iconLabel, { color: focused ? color : COLORS.textLight }]} allowFontScaling={false}>
-                  Opcões
-                </Text>
-                <View style={[styles.labelIndicator, { width: focused ? 26 : 0, backgroundColor: focused ? color : 'transparent' }]} />
-              </View>
-            ),
-            tabBarIcon: ({ color, focused }) => <SettingsIcon color={color} focused={focused} />,
           }}
         />
       </Tabs>

@@ -2,6 +2,7 @@ import { AppProvider } from '@/contexts/AppContext';
 import { initDatabase } from '@/database/db';
 import { Nunito_400Regular, Nunito_500Medium, Nunito_600SemiBold, Nunito_700Bold, useFonts } from '@expo-google-fonts/nunito';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import * as SplashScreen from 'expo-splash-screen';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -94,9 +95,15 @@ export default function RootLayout() {
   useEffect(() => {
     initDatabase();
   }, []);
-  
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
   if (!fontsLoaded) {
-    return null; // Or a loading screen
+    return null;
   }
   
   return (
@@ -104,6 +111,7 @@ export default function RootLayout() {
       <AppProvider>
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
           <Stack>
+            <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="vendas/nova" options={{ headerShown: false }} />
             <Stack.Screen name="vendas/editar" options={{ headerShown: false }} />

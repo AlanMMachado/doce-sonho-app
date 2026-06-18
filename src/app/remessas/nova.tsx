@@ -109,9 +109,10 @@ export default function NovaRemessaScreen() {
     <View style={styles.container}>
       <Header title="Nova Remessa" subtitle="Adicione produtos e quantidades" />
 
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }} 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         <ScrollView 
           style={styles.scrollView} 

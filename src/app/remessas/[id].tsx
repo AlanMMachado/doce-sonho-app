@@ -7,38 +7,27 @@ import { RemessaService } from '@/service/remessaService';
 import { VendaService } from '@/service/vendaService';
 import { Remessa } from '@/types/Remessa';
 import { Venda } from '@/types/Venda';
-import { useFocusEffect } from '@react-navigation/native';
+import { useScreenData } from '@/hooks/useScreenData';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Edit, Trash2, XCircle } from 'lucide-react-native';
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ActivityIndicator, Text } from 'react-native-paper';
 
 export default function DetalhesRemessaScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
   const [remessa, setRemessa] = useState<Remessa | null>(null);
   const [vendas, setVendas] = useState<Venda[]>([]);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteVendaModalVisible, setDeleteVendaModalVisible] = useState(false);
   const [vendaToDelete, setVendaToDelete] = useState<Venda | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
   const [itemsShown, setItemsShown] = useState(10);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (id) {
-        carregarDetalhes();
-      }
-    }, [id])
-  );
 
   const carregarDetalhes = async () => {
     try {
-      setLoading(true);
       const remessaData = await RemessaService.getById(parseInt(id));
       setRemessa(remessaData);
       
@@ -55,16 +44,10 @@ export default function DetalhesRemessaScreen() {
       }
     } catch (error) {
       console.error('Erro ao carregar detalhes:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await carregarDetalhes();
-    setRefreshing(false);
-  };
+  const { loading, refreshing, onRefresh } = useScreenData(carregarDetalhes, [id]);
 
   const handleDelete = async () => {
     try {

@@ -9,7 +9,7 @@ import { VendaService } from '@/service/vendaService';
 import { Cliente } from '@/types/Cliente';
 import { Produto } from '@/types/Produto';
 import { Venda } from '@/types/Venda';
-import { useFocusEffect } from '@react-navigation/native';
+import { useScreenData } from '@/hooks/useScreenData';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Clock, DollarSign, ShoppingCart, XCircle } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -19,7 +19,6 @@ import { ActivityIndicator, Text } from 'react-native-paper';
 export default function ClienteDetalhesScreen() {
   const { nome } = useLocalSearchParams<{ nome: string }>();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
   const [cliente, setCliente] = useState<(Omit<Cliente, 'vendas'> & {
     vendas: Venda[];
     vendasPagas: Venda[];
@@ -27,22 +26,11 @@ export default function ClienteDetalhesScreen() {
     primeiraCompra: string;
   }) | null>(null);
   const [produtos, setProdutos] = useState<Record<number, Produto>>({});
-  const [refreshing, setRefreshing] = useState(false);
   const [modalPagamentoVisible, setModalPagamentoVisible] = useState(false);
   const [vendaParaMarcar, setVendaParaMarcar] = useState<Venda | null>(null);
 
-  // Recarregar dados sempre que a tela ganhar foco
-  useFocusEffect(
-    React.useCallback(() => {
-      if (nome) {
-        carregarCliente();
-      }
-    }, [nome])
-  );
-
   const carregarCliente = async () => {
     try {
-      setLoading(true);
       const nomeCliente = decodeURIComponent(nome);
 
       // Buscar cliente do banco
@@ -94,16 +82,10 @@ export default function ClienteDetalhesScreen() {
     } catch (error) {
       console.error('Erro ao carregar cliente:', error);
       router.back();
-    } finally {
-      setLoading(false);
     }
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await carregarCliente();
-    setRefreshing(false);
-  };
+  const { loading, refreshing, onRefresh } = useScreenData(carregarCliente, [nome]);
 
   const marcarComoPago = async (venda: Venda) => {
     try {

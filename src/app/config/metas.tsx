@@ -5,7 +5,7 @@ import { ConfigService } from '@/service/configService';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ActivityIndicator, Text, TextInput } from 'react-native-paper';
 
 export default function MetasScreen() {
@@ -83,7 +83,12 @@ export default function MetasScreen() {
     <View style={styles.container}>
       <Header title="Metas" subtitle="Configure suas metas diárias" />
 
-      <ScrollView style={styles.scrollView}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
+        <ScrollView style={styles.scrollView}>
         <View style={styles.content}>
           {/* Meta Diária */}
           <View style={styles.section}>
@@ -125,6 +130,7 @@ export default function MetasScreen() {
           </View>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

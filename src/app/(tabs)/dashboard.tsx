@@ -6,7 +6,7 @@ import { ProdutoService } from '@/service/produtoService';
 import { RelatorioService } from '@/service/relatorioService';
 import { VendaService } from '@/service/vendaService';
 import { Produto } from '@/types/Produto';
-import { useFocusEffect } from '@react-navigation/native';
+import { useScreenData } from '@/hooks/useScreenData';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useRouter } from 'expo-router';
@@ -17,7 +17,6 @@ import { ActivityIndicator, Text } from 'react-native-paper';
 export default function DashboardScreen() {
   const { state, dispatch, recarregarConfiguracoes } = useApp();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
   const [produtos, setProdutos] = useState<{[key: number]: Produto}>({});
   const [kpis, setKpis] = useState({
     totalVendido: 0,
@@ -26,18 +25,9 @@ export default function DashboardScreen() {
     progressoTotal: 0
   });
   const [metaDiariaValor, setMetaDiariaValor] = useState(200);
-  const [refreshing, setRefreshing] = useState(false);
-
-  // Recarregar dados sempre que a tela ganhar foco
-  useFocusEffect(
-    React.useCallback(() => {
-      carregarDados();
-    }, [])
-  );
 
   const carregarDados = async () => {
     try {
-      setLoading(true);
       const hoje = new Date().toISOString().split('T')[0];
       
       const vendasRecentes = await VendaService.getVendasRecentes(10);
@@ -76,16 +66,10 @@ export default function DashboardScreen() {
       
     } catch (error) {
       console.error('Erro ao carregar dados do dashboard:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await carregarDados();
-    setRefreshing(false);
-  };
+  const { loading, refreshing, onRefresh } = useScreenData(carregarDados);
 
   // Garantir que o estado produtos seja usado
   const getProdutoNome = (produtoId: number, item?: { produto_tipo?: string; produto_sabor?: string }) => {

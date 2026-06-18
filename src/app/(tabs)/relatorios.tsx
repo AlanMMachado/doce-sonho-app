@@ -2,41 +2,25 @@ import Header from '@/components/Header';
 import { COLORS } from '@/constants/Colors';
 import { RelatorioService } from '@/service/relatorioService';
 import { RelatorioResponse } from '@/types/Relatorio';
-import { useFocusEffect } from '@react-navigation/native';
+import { useScreenData } from '@/hooks/useScreenData';
 import React, { useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ActivityIndicator, Text } from 'react-native-paper';
 
 export default function RelatoriosScreen() {
-  const [loading, setLoading] = useState(true);
   const [periodo, setPeriodo] = useState<'dia' | 'semana' | 'mes'>('dia');
   const [relatorio, setRelatorio] = useState<RelatorioResponse | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
-
-  // Recarregar dados sempre que a tela ganhar foco
-  useFocusEffect(
-    React.useCallback(() => {
-      carregarRelatorio();
-    }, [periodo])
-  );
 
   const carregarRelatorio = async () => {
     try {
-      setLoading(true);
       const relatorioData = await RelatorioService.gerarRelatorio({ periodo });
       setRelatorio(relatorioData);
     } catch (error) {
       console.error('Erro ao carregar relatório:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await carregarRelatorio();
-    setRefreshing(false);
-  };
+  const { loading, refreshing, onRefresh } = useScreenData(carregarRelatorio, [periodo]);
 
   if (!relatorio) {
     return (

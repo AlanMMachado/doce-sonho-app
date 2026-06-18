@@ -1,11 +1,10 @@
 import Header from '@/components/Header';
 import { COLORS } from '@/constants/Colors';
-import { useApp } from '@/contexts/AppContext';
 import { ClienteService } from '@/service/clienteService';
 import { ProdutoService } from '@/service/produtoService';
 import { Cliente } from '@/types/Cliente';
 import { Produto } from '@/types/Produto';
-import { useFocusEffect } from '@react-navigation/native';
+import { useScreenData } from '@/hooks/useScreenData';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useRouter } from 'expo-router';
@@ -14,25 +13,14 @@ import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from '
 import { ActivityIndicator, Text, TextInput } from 'react-native-paper';
 
 export default function ClientesScreen() {
-  const { state } = useApp();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [produtos, setProdutos] = useState<Record<number, Produto>>({});
-  const [refreshing, setRefreshing] = useState(false);
   const [filtro, setFiltro] = useState<'todos' | 'devedores' | 'em_dia'>('todos');
   const [busca, setBusca] = useState('');
 
-  // Recarregar dados sempre que a tela ganhar foco (incluindo na montagem)
-  useFocusEffect(
-    React.useCallback(() => {
-      carregarDados();
-    }, [])
-  );
-
   const carregarDados = async () => {
     try {
-      setLoading(true);
 
       // Buscar todos os clientes
       const clientesData = await ClienteService.getAll();
@@ -70,16 +58,10 @@ export default function ClientesScreen() {
 
     } catch (error) {
       console.error('Erro ao carregar dados dos clientes:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await carregarDados();
-    setRefreshing(false);
-  };
+  const { loading, refreshing, onRefresh } = useScreenData(carregarDados);
 
   const clientesFiltrados = clientes.filter(cliente => {
     const matchBusca = cliente.nome.toLowerCase().includes(busca.toLowerCase());
@@ -88,28 +70,6 @@ export default function ClientesScreen() {
                        (filtro === 'em_dia' && cliente.status === 'em_dia');
     return matchBusca && matchFiltro;
   });
-
-  const getResumoClientes = async () => {
-    try {
-      const estatisticas = await ClienteService.getEstatisticas();
-      return {
-        totalClientes: estatisticas.totalClientes,
-        devedores: estatisticas.totalDevedores,
-        emDia: estatisticas.totalClientes - estatisticas.totalDevedores,
-        totalDevido: estatisticas.totalValorDevido,
-        totalComprado: estatisticas.totalValorComprado
-      };
-    } catch (error) {
-      console.error('Erro ao buscar estatísticas:', error);
-      return {
-        totalClientes: 0,
-        devedores: 0,
-        emDia: 0,
-        totalDevido: 0,
-        totalComprado: 0
-      };
-    }
-  };
 
   const [resumo, setResumo] = useState({
     totalClientes: 0,

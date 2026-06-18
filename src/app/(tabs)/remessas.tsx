@@ -3,46 +3,31 @@ import Header from '@/components/Header';
 import { COLORS } from '@/constants/Colors';
 import { RemessaService } from '@/service/remessaService';
 import { Remessa } from '@/types/Remessa';
-import { useFocusEffect } from '@react-navigation/native';
+import { useScreenData } from '@/hooks/useScreenData';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useRouter } from 'expo-router';
 import { Edit, Power, Trash2 } from 'lucide-react-native';
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ActivityIndicator, Text } from 'react-native-paper';
 
 export default function RemessasScreen() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
   const [remessas, setRemessas] = useState<Remessa[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [selectedRemessaId, setSelectedRemessaId] = useState<number | null>(null);
 
-  useFocusEffect(
-    useCallback(() => {
-      carregarRemessas();
-    }, [])
-  );
-
   const carregarRemessas = async () => {
     try {
-      setLoading(true);
       const todasRemessas = await RemessaService.getAll();
       setRemessas(todasRemessas);
     } catch (error) {
       console.error('Erro ao carregar remessas:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await carregarRemessas();
-    setRefreshing(false);
-  };
+  const { loading, refreshing, onRefresh } = useScreenData(carregarRemessas);
 
   const handleDelete = async () => {
     if (selectedRemessaId) {

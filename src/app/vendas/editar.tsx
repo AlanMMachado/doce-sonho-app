@@ -10,7 +10,7 @@ import { ItemVendaForm, Venda } from '@/types/Venda';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { Dimensions, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Dimensions, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ActivityIndicator, Text, TextInput } from 'react-native-paper';
 
 const { width } = Dimensions.get('window');
@@ -238,6 +238,11 @@ export default function EditarVendaScreen() {
   return (
     <View style={styles.container}>
       <Header title="Editar Venda" subtitle="Atualize os dados da venda" />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.mediumBlue} />
@@ -507,6 +512,7 @@ export default function EditarVendaScreen() {
           </View>
         </ScrollView>
       )}
+      </KeyboardAvoidingView>
     </View>
   );
 }

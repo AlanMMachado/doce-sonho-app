@@ -2,15 +2,15 @@ import ClienteSearchInput from '@/components/ClienteSearchInput';
 import Header from '@/components/Header';
 import { COLORS } from '@/constants/Colors';
 import { useApp } from '@/contexts/AppContext';
+import { useScreenData } from '@/hooks/useScreenData';
 import { RemessaService } from '@/service/remessaService';
 import { SyncService } from '@/service/syncService';
 import { VendaService, recalcularTodosPrecos } from '@/service/vendaService';
 import { Produto } from '@/types/Produto';
 import { ItemVendaForm } from '@/types/Venda';
-import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
-import { Dimensions, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { Dimensions, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ActivityIndicator, Text, TextInput } from 'react-native-paper';
 
 const { width } = Dimensions.get('window');
@@ -18,7 +18,6 @@ const { width } = Dimensions.get('window');
 export default function NovaVendaScreen() {
   const router = useRouter();
   const { dispatch } = useApp();
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [itens, setItens] = useState<ItemVendaForm[]>([]);
@@ -28,15 +27,8 @@ export default function NovaVendaScreen() {
     metodo_pagamento: 'Pix'
   });
 
-  useFocusEffect(
-    useCallback(() => {
-      carregarProdutos();
-    }, [])
-  );
-
   const carregarProdutos = async () => {
     try {
-      setLoading(true);
       const remessasAtivas = await RemessaService.getAtivas();
       const todosProdutos: Produto[] = [];
       
@@ -51,10 +43,10 @@ export default function NovaVendaScreen() {
       setProdutos(todosProdutos);
     } catch (error) {
       console.error('Erro ao carregar produtos:', error);
-    } finally {
-      setLoading(false);
     }
   };
+
+  const { loading } = useScreenData(carregarProdutos);
 
   const setProductQuantidade = (produtoId: string, quantidade: number) => {
     const produto = produtos.find(p => p.id.toString() === produtoId);
@@ -198,6 +190,11 @@ export default function NovaVendaScreen() {
   return (
     <View style={styles.container}>
       <Header title="Nova Venda" subtitle="Registre uma venda rapidamente" />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.mediumBlue} />
@@ -467,6 +464,7 @@ export default function NovaVendaScreen() {
           </View>
         </ScrollView>
       )}
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -603,16 +601,10 @@ const styles = StyleSheet.create({
     color: COLORS.textDark,
     marginBottom: 4,
   },
-  produtoListNameDisabled: {
-    color: COLORS.textMedium,
-  },
   produtoListStockText: {
     fontSize: 12,
     color: COLORS.textMedium,
     fontWeight: '500',
-  },
-  produtoListStockTextDisabled: {
-    color: COLORS.textMedium,
   },
   produtoListQuantityControl: {
     flexDirection: 'row',
@@ -650,34 +642,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textMedium,
     fontWeight: '500',
-  },
-
-  priceCard: {
-    flex: 1,
-  },
-  priceLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  promotionBadge: {
-    backgroundColor: COLORS.pink,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  promotionBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: COLORS.white,
-    letterSpacing: 0.5,
-  },
-  priceInput: {
-    backgroundColor: COLORS.white,
-  },
-  priceInputPromotion: {
-    backgroundColor: 'rgba(236, 72, 153, 0.05)',
   },
   paymentGrid: {
     flexDirection: 'row',

@@ -2,6 +2,7 @@ import ConfirmationModal from '@/components/ConfirmationModal';
 import Header from '@/components/Header';
 import VendaCard from '@/components/VendaCard';
 import { COLORS } from '@/constants/Colors';
+import { useScreenData } from '@/hooks/useScreenData';
 import { ClienteService } from '@/service/clienteService';
 import { ProdutoService } from '@/service/produtoService';
 import { SyncService } from '@/service/syncService';
@@ -9,7 +10,6 @@ import { VendaService } from '@/service/vendaService';
 import { Cliente } from '@/types/Cliente';
 import { Produto } from '@/types/Produto';
 import { Venda } from '@/types/Venda';
-import { useScreenData } from '@/hooks/useScreenData';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Clock, DollarSign, ShoppingCart, XCircle } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -302,26 +302,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    borderWidth: 1,
   },
   statusDevedor: {
-    backgroundColor: COLORS.softGray,
-    borderColor: COLORS.error,
+    backgroundColor: COLORS.error,
   },
   statusEmDia: {
-    backgroundColor: COLORS.softGray,
-    borderColor: COLORS.green,
+    backgroundColor: COLORS.green,
   },
   statusBadgeText: {
     fontSize: 12,
     fontWeight: 'bold',
+    color: COLORS.white,
   },
-  statusTextDevedor: {
-    color: COLORS.error,
-  },
-  statusTextEmDia: {
-    color: COLORS.green,
-  },
+  statusTextDevedor: {},
+  statusTextEmDia: {},
   metricasGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',

@@ -2,12 +2,12 @@ import ConfirmationModal from '@/components/ConfirmationModal';
 import Header from '@/components/Header';
 import VendaCard from '@/components/VendaCard';
 import { COLORS } from '@/constants/Colors';
+import { useScreenData } from '@/hooks/useScreenData';
 import { ClienteService } from '@/service/clienteService';
 import { RemessaService } from '@/service/remessaService';
 import { VendaService } from '@/service/vendaService';
 import { Remessa } from '@/types/Remessa';
 import { Venda } from '@/types/Venda';
-import { useScreenData } from '@/hooks/useScreenData';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -651,7 +651,7 @@ const styles = StyleSheet.create({
   editCardButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 8,
     backgroundColor: COLORS.softGray,
     justifyContent: 'center',
     alignItems: 'center',
@@ -661,7 +661,7 @@ const styles = StyleSheet.create({
   deleteCardButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 8,
     backgroundColor: COLORS.softGray,
     justifyContent: 'center',
     alignItems: 'center',

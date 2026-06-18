@@ -1,10 +1,10 @@
-import ConfirmationModal from '@/components/ConfirmationModal';
 import ConfigMenuButton from '@/components/ConfigMenuButton';
+import ConfirmationModal from '@/components/ConfirmationModal';
 import Header from '@/components/Header';
 import { COLORS } from '@/constants/Colors';
+import { useScreenData } from '@/hooks/useScreenData';
 import { RemessaService } from '@/service/remessaService';
 import { Remessa } from '@/types/Remessa';
-import { useScreenData } from '@/hooks/useScreenData';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useRouter } from 'expo-router';
@@ -135,13 +135,9 @@ export default function RemessasScreen() {
                   <View style={styles.headerBadges}>
                     <View style={[
                       styles.ativaBadge,
-                      { backgroundColor: remessa.ativa === 1 ? '#dcfce7' : '#fee2e2',
-                        borderColor: remessa.ativa === 1 ? '#16a34a' : '#dc2626' }
+                      remessa.ativa === 1 ? styles.ativaBadgeAtiva : styles.ativaBadgeInativa,
                     ]}>
-                      <Text style={[
-                        styles.ativaText,
-                        { color: remessa.ativa === 1 ? '#16a34a' : '#dc2626' }
-                      ]}>
+                      <Text style={styles.ativaText}>
                         {remessa.ativa === 1 ? 'Ativa' : 'Inativa'}
                       </Text>
                     </View>
@@ -354,11 +350,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
-    borderWidth: 1,
+  },
+  ativaBadgeAtiva: {
+    backgroundColor: COLORS.green,
+  },
+  ativaBadgeInativa: {
+    backgroundColor: COLORS.error,
   },
   ativaText: {
     fontSize: 12,
     fontWeight: 'bold',
+    color: COLORS.white,
   },
   observacaoContainer: {
     backgroundColor: COLORS.softGray,
@@ -461,8 +463,8 @@ const styles = StyleSheet.create({
   toggleCardButton: {
     width: 32,
     height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.softGray,
+    borderRadius: 8,
+    backgroundColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
@@ -470,8 +472,8 @@ const styles = StyleSheet.create({
   editCardButton: {
     width: 32,
     height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.softGray,
+    borderRadius: 8,
+    backgroundColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
@@ -480,8 +482,8 @@ const styles = StyleSheet.create({
   deleteCardButton: {
     width: 32,
     height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.softGray,
+    borderRadius: 8,
+    backgroundColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,

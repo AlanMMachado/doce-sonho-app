@@ -1,234 +1,206 @@
-import { db } from '@/database/db';
+import { supabase } from '@/lib/supabase';
 import { Produto, ProdutoParaRemessa } from '../types/Produto';
 import { Remessa, RemessaCreateParams } from '../types/Remessa';
 import { ProdutoConfigService } from './produtoConfigService';
 
-export const RemessaService = {
-    async create(remessa: RemessaCreateParams): Promise<Remessa> {
-        const result = await db.runAsync(
-            `INSERT INTO remessas (data, observacao) VALUES (?, ?)`,
-            [remessa.data, remessa.observacao || null]
-        );
-        
-        const remessaId = result.lastInsertRowId as number;
-        
-        // Criar produtos da remessa
-        for (const produto of remessa.produtos) {
-            const custoPadrao = produto.tipo === 'trufa' ? 2.50 : 5.00;
-            let precoBase = produto.preco_base || 0;
-            let precoPromocao: number | null = produto.preco_promocao || null;
-            let quantidadePromocao: number | null = produto.quantidade_promocao || null;
-            let produtoConfigId: number | null = null;
+async function resolverPrecosProduto(
+    userId: string,
+    produto: ProdutoParaRemessa
+): Promise<{
+    preco_base: number;
+    preco_promocao: number | null;
+    quantidade_promocao: number | null;
+    produto_config_id: string | null;
+    custo_producao: number;
+}> {
+    const custoPadrao = produto.custo_producao ?? (produto.tipo === 'trufa' ? 2.50 : 5.00);
 
-            // Se não foi definido preço base, buscar da configuração
-            if (!produto.preco_base || produto.preco_base <= 0) {
-                try {
-                    const config = await ProdutoConfigService.getByTipo(produto.tipo);
-                    if (config) {
-                        precoBase = config.preco_base;
-                        precoPromocao = config.preco_promocao || null;
-                        quantidadePromocao = config.quantidade_promocao || null;
-                        produtoConfigId = config.id;
-                    } else {
-                        // Usar valores padrão como fallback
-                        if (produto.tipo === 'trufa') {
-                            precoBase = 5.00;
-                            precoPromocao = 4.50;
-                            quantidadePromocao = 3;
-                        } else if (produto.tipo === 'surpresa') {
-                            precoBase = 12.00;
-                        } else if (produto.tipo === 'torta') {
-                            precoBase = 12.00;
-                            precoPromocao = 10.00;
-                            quantidadePromocao = 2;
-                        }
-                    }
-                } catch (error) {
-                    console.error('Erro ao buscar configuração de produto:', error);
-                    // Usar valores padrão como fallback
-                    if (produto.tipo === 'trufa') {
-                        precoBase = 5.00;
-                        precoPromocao = 4.50;
-                        quantidadePromocao = 3;
-                    } else if (produto.tipo === 'surpresa') {
-                        precoBase = 12.00;
-                    } else if (produto.tipo === 'torta') {
-                        precoBase = 12.00;
-                        precoPromocao = 10.00;
-                        quantidadePromocao = 2;
-                    }
-                }
-            }
-
-            await db.runAsync(
-                `INSERT INTO produtos (remessa_id, produto_config_id, tipo, sabor, quantidade_inicial, custo_producao, preco_base, preco_promocao, quantidade_promocao) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [remessaId, produtoConfigId, produto.tipo, produto.sabor, produto.quantidade_inicial, custoPadrao, precoBase, precoPromocao, quantidadePromocao]
-            );
-        }
-        
+    if (produto.preco_base && produto.preco_base > 0) {
         return {
-            id: remessaId,
-            data: remessa.data,
-            observacao: remessa.observacao,
-            ativa: 1,
-            created_at: new Date().toISOString()
+            preco_base: produto.preco_base,
+            preco_promocao: produto.preco_promocao ?? null,
+            quantidade_promocao: produto.quantidade_promocao ?? null,
+            produto_config_id: produto.produto_config_id ?? null,
+            custo_producao: custoPadrao,
         };
+    }
+
+    const config = await ProdutoConfigService.getByTipo(userId, produto.tipo);
+    if (config) {
+        return {
+            preco_base: config.preco_base,
+            preco_promocao: config.preco_promocao ?? null,
+            quantidade_promocao: config.quantidade_promocao ?? null,
+            produto_config_id: config.id,
+            custo_producao: custoPadrao,
+        };
+    }
+
+    return { preco_base: 0, preco_promocao: null, quantidade_promocao: null, produto_config_id: null, custo_producao: custoPadrao };
+}
+
+export const RemessaService = {
+    async create(userId: string, params: RemessaCreateParams): Promise<Remessa> {
+        const { data: remessa, error } = await supabase
+            .from('remessas')
+            .insert({ user_id: userId, data: params.data, observacao: params.observacao ?? null })
+            .select()
+            .single();
+        if (error) throw error;
+
+        const produtosParaInserir = await Promise.all(
+            params.produtos.map(async (p) => {
+                const precos = await resolverPrecosProduto(userId, p);
+                return {
+                    user_id: userId,
+                    remessa_id: remessa.id,
+                    produto_config_id: precos.produto_config_id,
+                    tipo: p.tipo,
+                    sabor: p.sabor,
+                    quantidade_inicial: p.quantidade_inicial,
+                    quantidade_vendida: 0,
+                    custo_producao: precos.custo_producao,
+                    preco_base: precos.preco_base,
+                    preco_promocao: precos.preco_promocao,
+                    quantidade_promocao: precos.quantidade_promocao,
+                };
+            })
+        );
+
+        const { data: produtos, error: erroP } = await supabase
+            .from('produtos')
+            .insert(produtosParaInserir)
+            .select();
+        if (erroP) throw erroP;
+
+        return { ...remessa, produtos: produtos ?? [] };
     },
 
-    async getAll(): Promise<Remessa[]> {
-        const remessas = await db.getAllAsync<Remessa>(`SELECT * FROM remessas ORDER BY id DESC`);
-        
-        for (const remessa of remessas) {
-            const produtos = await db.getAllAsync<Produto>(
-                `SELECT * FROM produtos WHERE remessa_id = ?`,
-                [remessa.id]
-            );
-            remessa.produtos = produtos;
-        }
-        
-        return remessas;
+    async getAll(userId: string): Promise<Remessa[]> {
+        const { data, error } = await supabase
+            .from('remessas')
+            .select('*, produtos(*)')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        return data ?? [];
     },
 
-    async getAtivas(): Promise<Remessa[]> {
-        return await db.getAllAsync<Remessa>(
-            `SELECT DISTINCT r.* FROM remessas r
-             INNER JOIN produtos p ON r.id = p.remessa_id
-             WHERE r.ativa = 1 AND (p.quantidade_inicial - p.quantidade_vendida) > 0
-             ORDER BY r.id DESC`
+    async getAtivas(userId: string): Promise<Remessa[]> {
+        const { data, error } = await supabase
+            .from('remessas')
+            .select('*, produtos(*)')
+            .eq('user_id', userId)
+            .eq('ativa', true)
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+
+        return (data ?? []).filter(r =>
+            (r.produtos as Produto[]).some(p => p.quantidade_inicial - p.quantidade_vendida > 0)
         );
     },
 
-    async getById(id: number): Promise<Remessa | null> {
-        const remessa = await db.getFirstAsync<Remessa>(
-            `SELECT * FROM remessas WHERE id = ?`,
-            [id]
-        );
-        
-        if (remessa) {
-            const produtos = await db.getAllAsync<Produto>(
-                `SELECT * FROM produtos WHERE remessa_id = ?`,
-                [id]
-            );
-            remessa.produtos = produtos;
-        }
-        
-        return remessa;
+    async getById(userId: string, id: string): Promise<Remessa | null> {
+        const { data, error } = await supabase
+            .from('remessas')
+            .select('*, produtos(*)')
+            .eq('user_id', userId)
+            .eq('id', id)
+            .single();
+        if (error) return null;
+        return data;
     },
 
-    async getProdutosByRemessaId(remessaId: number): Promise<Produto[]> {
-        return await db.getAllAsync<Produto>(
-            `SELECT * FROM produtos WHERE remessa_id = ? ORDER BY tipo, sabor`,
-            [remessaId]
-        );
+    async getProdutosByRemessaId(userId: string, remessaId: string): Promise<Produto[]> {
+        const { data, error } = await supabase
+            .from('produtos')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('remessa_id', remessaId)
+            .order('tipo')
+            .order('sabor');
+        if (error) throw error;
+        return data ?? [];
     },
 
-    async update(id: number, remessa: Partial<Remessa>): Promise<void> {
-        const updates: string[] = [];
-        const values: any[] = [];
-
-        if (remessa.data !== undefined) {
-            updates.push('data = ?');
-            values.push(remessa.data);
-        }
-        if (remessa.observacao !== undefined) {
-            updates.push('observacao = ?');
-            values.push(remessa.observacao);
-        }
-        if (remessa.ativa !== undefined) {
-            updates.push('ativa = ?');
-            values.push(remessa.ativa);
-        }
-
-        if (updates.length === 0) return;
-
-        const query = `UPDATE remessas SET ${updates.join(', ')} WHERE id = ?`;
-        values.push(id);
-
-        await db.runAsync(query, values);
+    async update(userId: string, id: string, updates: Partial<Pick<Remessa, 'data' | 'observacao' | 'ativa'>>): Promise<void> {
+        const { error } = await supabase
+            .from('remessas')
+            .update(updates)
+            .eq('user_id', userId)
+            .eq('id', id);
+        if (error) throw error;
     },
 
-    async toggleAtiva(id: number): Promise<boolean> {
-        const remessa = await this.getById(id);
+    async toggleAtiva(userId: string, id: string): Promise<boolean> {
+        const remessa = await this.getById(userId, id);
         if (!remessa) throw new Error('Remessa não encontrada');
-        
-        const novoStatus = remessa.ativa === 1 ? 0 : 1;
-        await db.runAsync(`UPDATE remessas SET ativa = ? WHERE id = ?`, [novoStatus, id]);
-        return novoStatus === 1;
+
+        const novoStatus = !remessa.ativa;
+        await this.update(userId, id, { ativa: novoStatus });
+        return novoStatus;
     },
 
-    async updateProduto(id: number, updates: Partial<Produto>): Promise<void> {
-        await db.runAsync(
-            `UPDATE produtos SET tipo = ?, sabor = ?, quantidade_inicial = ?, custo_producao = ?, preco_base = ?, preco_promocao = ?, quantidade_promocao = ? WHERE id = ?`,
-            [updates.tipo || '', updates.sabor || '', updates.quantidade_inicial || 0, updates.custo_producao || 0, updates.preco_base || 0, updates.preco_promocao || null, updates.quantidade_promocao || null, id]
-        );
+    async updateProduto(userId: string, id: string, updates: Partial<Produto>): Promise<void> {
+        const { error } = await supabase
+            .from('produtos')
+            .update({
+                tipo: updates.tipo,
+                sabor: updates.sabor,
+                quantidade_inicial: updates.quantidade_inicial,
+                custo_producao: updates.custo_producao,
+                preco_base: updates.preco_base,
+                preco_promocao: updates.preco_promocao ?? null,
+                quantidade_promocao: updates.quantidade_promocao ?? null,
+            })
+            .eq('user_id', userId)
+            .eq('id', id);
+        if (error) throw error;
     },
 
-    async addProduto(remessaId: number, produto: ProdutoParaRemessa): Promise<void> {
-        const custoPadrao = produto.tipo === 'trufa' ? 2.50 : 5.00;
-        let precoBase = produto.preco_base || 0;
-        let precoPromocao = produto.preco_promocao || null;
-        let quantidadePromocao = produto.quantidade_promocao || null;
-        let produtoConfigId: number | null = produto.produto_config_id || null;
-
-        if (!produto.preco_base) {
-            try {
-                const config = await ProdutoConfigService.getByTipo(produto.tipo);
-                if (config) {
-                    precoBase = config.preco_base;
-                    precoPromocao = config.preco_promocao || null;
-                    quantidadePromocao = config.quantidade_promocao || null;
-                    produtoConfigId = config.id;
-                } else {
-                    // Usar valores padrão como fallback
-                    if (produto.tipo === 'trufa') {
-                        precoBase = 5.00;
-                        precoPromocao = 4.50;
-                        quantidadePromocao = 3;
-                    } else if (produto.tipo === 'surpresa') {
-                        precoBase = 12.00;
-                    } else if (produto.tipo === 'torta') {
-                        precoBase = 12.00;
-                        precoPromocao = 10.00;
-                        quantidadePromocao = 2;
-                    }
-                }
-            } catch (error) {
-                console.error('Erro ao buscar configuração de produto:', error);
-                // Usar valores padrão como fallback
-                if (produto.tipo === 'trufa') {
-                    precoBase = 5.00;
-                    precoPromocao = 4.50;
-                    quantidadePromocao = 3;
-                } else if (produto.tipo === 'surpresa') {
-                    precoBase = 12.00;
-                } else if (produto.tipo === 'torta') {
-                    precoBase = 12.00;
-                    precoPromocao = 10.00;
-                    quantidadePromocao = 2;
-                }
-            }
-        }
-
-        await db.runAsync(
-            `INSERT INTO produtos (remessa_id, produto_config_id, tipo, sabor, quantidade_inicial, custo_producao, preco_base, preco_promocao, quantidade_promocao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [remessaId, produtoConfigId, produto.tipo, produto.sabor, produto.quantidade_inicial, custoPadrao, precoBase, precoPromocao, quantidadePromocao]
-        );
+    async addProduto(userId: string, remessaId: string, produto: ProdutoParaRemessa): Promise<void> {
+        const precos = await resolverPrecosProduto(userId, produto);
+        const { error } = await supabase.from('produtos').insert({
+            user_id: userId,
+            remessa_id: remessaId,
+            produto_config_id: precos.produto_config_id,
+            tipo: produto.tipo,
+            sabor: produto.sabor,
+            quantidade_inicial: produto.quantidade_inicial,
+            quantidade_vendida: 0,
+            custo_producao: precos.custo_producao,
+            preco_base: precos.preco_base,
+            preco_promocao: precos.preco_promocao,
+            quantidade_promocao: precos.quantidade_promocao,
+        });
+        if (error) throw error;
     },
 
-    async deleteProduto(id: number): Promise<void> {
-        const vendas = await db.getAllAsync(`SELECT v.id FROM vendas v INNER JOIN itens_venda iv ON v.id = iv.venda_id WHERE iv.produto_id = ?`, [id]);
-        if (vendas.length > 0) {
+    async deleteProduto(userId: string, id: string): Promise<void> {
+        const { data: vendas } = await supabase
+            .from('itens_venda')
+            .select('id')
+            .eq('produto_id', id)
+            .limit(1);
+
+        if (vendas && vendas.length > 0) {
             throw new Error('Não é possível excluir produto com vendas associadas');
         }
-        await db.runAsync(`DELETE FROM produtos WHERE id = ?`, [id]);
+
+        const { error } = await supabase
+            .from('produtos')
+            .delete()
+            .eq('user_id', userId)
+            .eq('id', id);
+        if (error) throw error;
     },
 
-    async delete(id: number): Promise<void> {
-        // Deletar produtos da remessa (itens_venda.produto_id será setado para NULL via ON DELETE SET NULL)
-        await db.runAsync(`DELETE FROM produtos WHERE remessa_id = ?`, [id]);
-
-        // Deletar a remessa
-        await db.runAsync(`DELETE FROM remessas WHERE id = ?`, [id]);
-    }
+    async delete(userId: string, id: string): Promise<void> {
+        const { error } = await supabase
+            .from('remessas')
+            .delete()
+            .eq('user_id', userId)
+            .eq('id', id);
+        if (error) throw error;
+    },
 };

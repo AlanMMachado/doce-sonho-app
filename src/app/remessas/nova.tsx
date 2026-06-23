@@ -1,5 +1,6 @@
 import Header from '@/components/Header';
 import { COLORS } from '@/constants/Colors';
+import { useAuth } from '@/contexts/AuthContext';
 import { ProdutoConfigService } from '@/service/produtoConfigService';
 import { RemessaService } from '@/service/remessaService';
 import { ProdutoConfig } from '@/types/ProdutoConfig';
@@ -11,6 +12,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacit
 import { ActivityIndicator, Text, TextInput } from 'react-native-paper';
 
 export default function NovaRemessaScreen() {
+  const { user } = useAuth();
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [observacao, setObservacao] = useState('');
@@ -23,7 +25,7 @@ export default function NovaRemessaScreen() {
 
   const loadProdutosConfig = async () => {
     try {
-      const configs = await ProdutoConfigService.getAll();
+      const configs = await ProdutoConfigService.getAll(user!.id);
       setProdutosConfig(configs);
     } catch (error) {
       console.error('Erro ao carregar configurações:', error);
@@ -89,7 +91,7 @@ export default function NovaRemessaScreen() {
         })
       };
 
-      await RemessaService.create(remessaData);
+      await RemessaService.create(user!.id, remessaData);
       router.back();
     } catch (error) {
       console.error('Erro ao salvar remessa:', error);

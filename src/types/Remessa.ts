@@ -1,8 +1,8 @@
 import { Produto, ProdutoParaRemessa } from './Produto';
 
 export interface ProdutoRemessaForm {
-    id?: number;
-    produtoConfigId: number;
+    id?: string;
+    produtoConfigId: string;
     tipo: string;
     tipo_customizado?: string;
     sabor: string;
@@ -13,10 +13,10 @@ export interface ProdutoRemessaForm {
 }
 
 export interface Remessa {
-    id: number;
+    id: string;
     data: string;
     observacao?: string;
-    ativa: number; // 1 = ativa, 0 = inativa
+    ativa: boolean;
     created_at?: string;
     produtos?: Produto[];
 }

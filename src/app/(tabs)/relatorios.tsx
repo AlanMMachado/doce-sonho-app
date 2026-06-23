@@ -1,6 +1,7 @@
 import ConfigMenuButton from '@/components/ConfigMenuButton';
 import Header from '@/components/Header';
 import { COLORS } from '@/constants/Colors';
+import { useAuth } from '@/contexts/AuthContext';
 import { RelatorioService } from '@/service/relatorioService';
 import { RelatorioResponse } from '@/types/Relatorio';
 import { useScreenData } from '@/hooks/useScreenData';
@@ -9,12 +10,13 @@ import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from '
 import { ActivityIndicator, Text } from 'react-native-paper';
 
 export default function RelatoriosScreen() {
+  const { user } = useAuth();
   const [periodo, setPeriodo] = useState<'dia' | 'semana' | 'mes'>('dia');
   const [relatorio, setRelatorio] = useState<RelatorioResponse | null>(null);
 
   const carregarRelatorio = async () => {
     try {
-      const relatorioData = await RelatorioService.gerarRelatorio({ periodo });
+      const relatorioData = await RelatorioService.gerarRelatorio(user!.id, { periodo });
       setRelatorio(relatorioData);
     } catch (error) {
       console.error('Erro ao carregar relatório:', error);

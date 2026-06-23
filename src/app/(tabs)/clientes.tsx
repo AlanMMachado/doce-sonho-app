@@ -1,11 +1,10 @@
 import ConfigMenuButton from '@/components/ConfigMenuButton';
 import Header from '@/components/Header';
 import { COLORS } from '@/constants/Colors';
+import { useAuth } from '@/contexts/AuthContext';
 import { useScreenData } from '@/hooks/useScreenData';
 import { ClienteService } from '@/service/clienteService';
-import { ProdutoService } from '@/service/produtoService';
 import { Cliente } from '@/types/Cliente';
-import { Produto } from '@/types/Produto';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useRouter } from 'expo-router';
@@ -14,38 +13,25 @@ import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from '
 import { ActivityIndicator, Text, TextInput } from 'react-native-paper';
 
 export default function ClientesScreen() {
+  const { user } = useAuth();
   const router = useRouter();
   const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [produtos, setProdutos] = useState<Record<number, Produto>>({});
   const [filtro, setFiltro] = useState<'todos' | 'devedores' | 'em_dia'>('todos');
   const [busca, setBusca] = useState('');
+  const [resumo, setResumo] = useState({
+    totalClientes: 0,
+    devedores: 0,
+    emDia: 0,
+    totalDevido: 0,
+    totalComprado: 0
+  });
 
   const carregarDados = async () => {
     try {
-      const clientesData = await ClienteService.getAll();
+      const clientesData = await ClienteService.getAll(user!.id);
+      setClientes(clientesData);
 
-      // Buscar produtos para referência
-      const produtoIds = [...new Set(
-        clientesData.flatMap(c => c.vendas)
-      )];
-      const produtosMap: Record<number, Produto> = {};
-      for (const id of produtoIds) {
-        const produto = await ProdutoService.getById(id);
-        if (produto) {
-          produtosMap[id] = produto;
-        }
-      }
-      setProdutos(produtosMap);
-
-      // Converter para o formato usado na tela
-      const clientesConvertidos: Cliente[] = clientesData.map(cliente => ({
-        ...cliente,
-        vendas: [] // Será carregado sob demanda se necessário
-      }));
-
-      setClientes(clientesConvertidos);
-      
-      const estatisticas = await ClienteService.getEstatisticas();
+      const estatisticas = await ClienteService.getEstatisticas(user!.id);
       setResumo({
         totalClientes: estatisticas.totalClientes,
         devedores: estatisticas.totalDevedores,
@@ -53,7 +39,6 @@ export default function ClientesScreen() {
         totalDevido: estatisticas.totalValorDevido,
         totalComprado: estatisticas.totalValorComprado
       });
-
     } catch (error) {
       console.error('Erro ao carregar dados dos clientes:', error);
     }
@@ -67,14 +52,6 @@ export default function ClientesScreen() {
                        (filtro === 'devedores' && cliente.status === 'devedor') ||
                        (filtro === 'em_dia' && cliente.status === 'em_dia');
     return matchBusca && matchFiltro;
-  });
-
-  const [resumo, setResumo] = useState({
-    totalClientes: 0,
-    devedores: 0,
-    emDia: 0,
-    totalDevido: 0,
-    totalComprado: 0
   });
 
   return (
@@ -186,8 +163,8 @@ export default function ClientesScreen() {
                         <View style={styles.clienteInfo}>
                           <Text style={styles.clienteNome}>{cliente.nome}</Text>
                           <Text style={styles.clienteStatus}>
-                            {cliente.numeroCompras} compra{cliente.numeroCompras !== 1 ? 's' : ''} •
-                            Última: {format(parseISO(cliente.ultimaCompra), 'dd/MM', { locale: ptBR })}
+                            {cliente.numero_compras} compra{cliente.numero_compras !== 1 ? 's' : ''} •
+                            {cliente.ultima_compra ? ` Última: ${format(parseISO(cliente.ultima_compra), 'dd/MM', { locale: ptBR })}` : ''}
                           </Text>
                         </View>
 
@@ -209,16 +186,16 @@ export default function ClientesScreen() {
 
                           <View style={styles.totalComprado}>
                             <Text style={styles.totalCompradoLabel}>Total Comprado</Text>
-                            <Text style={styles.totalCompradoValor}>R$ {(cliente.totalComprado || 0).toFixed(2)}</Text>
+                            <Text style={styles.totalCompradoValor}>R$ {(cliente.total_comprado || 0).toFixed(2)}</Text>
                           </View>
                         </View>
                       </View>
 
-                      {cliente.totalDevido > 0 && (
+                      {cliente.total_devido > 0 && (
                         <View style={styles.valorDevido}>
                           <Text style={styles.valorDevidoLabel}>Valor Devido</Text>
                           <Text style={styles.valorDevidoValor}>
-                            R$ {(cliente.totalDevido || 0).toFixed(2)}
+                            R$ {(cliente.total_devido || 0).toFixed(2)}
                           </Text>
                         </View>
                       )}

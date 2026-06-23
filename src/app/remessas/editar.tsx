@@ -1,5 +1,6 @@
 import Header from '@/components/Header';
 import { COLORS } from '@/constants/Colors';
+import { useAuth } from '@/contexts/AuthContext';
 import { ProdutoConfigService } from '@/service/produtoConfigService';
 import { RemessaService } from '@/service/remessaService';
 import { ProdutoConfig } from '@/types/ProdutoConfig';
@@ -12,6 +13,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacit
 import { ActivityIndicator, Text, TextInput } from 'react-native-paper';
 
 export default function EditarRemessaScreen() {
+  const { user } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -33,14 +35,14 @@ export default function EditarRemessaScreen() {
       setLoading(true);
       
       // Carregar remessa atual
-      const remessa = await RemessaService.getById(parseInt(id));
+      const remessa = await RemessaService.getById(user!.id, id);
       if (remessa) {
         setObservacao(remessa.observacao || '');
-        
+
         // Mapear produtos atuais
         const produtosMapeados: ProdutoRemessaForm[] = remessa.produtos?.map(p => ({
           id: p.id,
-          produtoConfigId: 0,
+          produtoConfigId: '',
           tipo: p.tipo,
           sabor: p.sabor,
           quantidade_inicial: p.quantidade_inicial.toString(),
@@ -53,7 +55,7 @@ export default function EditarRemessaScreen() {
       }
       
       // Carregar produtos configurados
-      const configs = await ProdutoConfigService.getAll();
+      const configs = await ProdutoConfigService.getAll(user!.id);
       setProdutosConfig(configs);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
@@ -102,19 +104,19 @@ export default function EditarRemessaScreen() {
       setSaving(true);
 
       // Atualizar observação
-      await RemessaService.update(parseInt(id), {
+      await RemessaService.update(user!.id, id, {
         observacao: observacao.trim() || undefined
       });
 
       // Deletar produtos com ID que não existem mais na lista
       const produtosAtuaisIds = produtosValidos.filter(p => p.id).map(p => p.id!);
-      const remessaAtual = await RemessaService.getById(parseInt(id));
+      const remessaAtual = await RemessaService.getById(user!.id, id);
       const produtosParaDeletar = (remessaAtual?.produtos || [])
         .filter(p => !produtosAtuaisIds.includes(p.id))
         .map(p => p.id);
-      
+
       for (const produtoId of produtosParaDeletar) {
-        await RemessaService.deleteProduto(produtoId);
+        await RemessaService.deleteProduto(user!.id, produtoId);
       }
 
       // Atualizar ou adicionar produtos
@@ -125,7 +127,7 @@ export default function EditarRemessaScreen() {
 
         if (produto.id) {
           // Atualizar produto existente
-          await RemessaService.updateProduto(produto.id, {
+          await RemessaService.updateProduto(user!.id, produto.id, {
             tipo: tipoFinal,
             sabor: produto.sabor.trim(),
             quantidade_inicial: parseInt(produto.quantidade_inicial),
@@ -135,7 +137,7 @@ export default function EditarRemessaScreen() {
           });
         } else {
           // Adicionar novo produto
-          await RemessaService.addProduto(parseInt(id), {
+          await RemessaService.addProduto(user!.id, id, {
             tipo: tipoFinal,
             sabor: produto.sabor.trim(),
             quantidade_inicial: parseInt(produto.quantidade_inicial),

@@ -2,8 +2,8 @@ import ConfirmationModal from '@/components/ConfirmationModal';
 import Header from '@/components/Header';
 import VendaCard from '@/components/VendaCard';
 import { COLORS } from '@/constants/Colors';
+import { useAuth } from '@/contexts/AuthContext';
 import { useScreenData } from '@/hooks/useScreenData';
-import { ClienteService } from '@/service/clienteService';
 import { RemessaService } from '@/service/remessaService';
 import { VendaService } from '@/service/vendaService';
 import { Remessa } from '@/types/Remessa';
@@ -17,6 +17,7 @@ import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from '
 import { ActivityIndicator, Text } from 'react-native-paper';
 
 export default function DetalhesRemessaScreen() {
+  const { user } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [remessa, setRemessa] = useState<Remessa | null>(null);
@@ -28,13 +29,13 @@ export default function DetalhesRemessaScreen() {
 
   const carregarDetalhes = async () => {
     try {
-      const remessaData = await RemessaService.getById(parseInt(id));
+      const remessaData = await RemessaService.getById(user!.id, id);
       setRemessa(remessaData);
-      
+
       if (remessaData?.produtos) {
-        const vendasMap = new Map<number, Venda>();
+        const vendasMap = new Map<string, Venda>();
         for (const produto of remessaData.produtos) {
-          const vendasProduto = await VendaService.getByProduto(produto.id);
+          const vendasProduto = await VendaService.getByProduto(user!.id, produto.id);
           for (const venda of vendasProduto) {
             vendasMap.set(venda.id, venda);
           }
@@ -51,11 +52,10 @@ export default function DetalhesRemessaScreen() {
 
   const handleDelete = async () => {
     try {
-      await RemessaService.delete(parseInt(id));
+      await RemessaService.delete(user!.id, id);
       router.back();
     } catch (error) {
       console.error('Erro ao excluir remessa:', error);
-      // You could show an alert here
     } finally {
       setDeleteModalVisible(false);
     }
@@ -65,19 +65,7 @@ export default function DetalhesRemessaScreen() {
     if (!vendaToDelete) return;
 
     try {
-      const nomeCliente = vendaToDelete.cliente;
-      
-      await VendaService.delete(vendaToDelete.id);
-      
-      // Recalcular totais do cliente após deletar venda
-      if (nomeCliente) {
-        const cliente = await ClienteService.getByNome(nomeCliente);
-        if (cliente) {
-          await ClienteService.recalcularTotais(cliente.id);
-        }
-      }
-      
-      // Recarregar dados
+      await VendaService.delete(user!.id, vendaToDelete.id);
       await carregarDetalhes();
     } catch (error) {
       console.error('Erro ao excluir venda:', error);
@@ -91,8 +79,8 @@ export default function DetalhesRemessaScreen() {
   if (!remessa) {
     return (
       <View style={styles.container}>
-        <Header 
-          title="Detalhes da Remessa" 
+        <Header
+          title="Detalhes da Remessa"
           subtitle="Carregando..."
         />
         <View style={styles.errorContainer}>
@@ -108,17 +96,6 @@ export default function DetalhesRemessaScreen() {
     }
     try {
       return format(new Date(dateString), "dd 'de' MMMM, yyyy", { locale: ptBR });
-    } catch {
-      return 'Data inválida';
-    }
-  };
-
-  const formatDateTime = (dateString: string) => {
-    if (!dateString || dateString === 'null' || dateString === '') {
-      return 'Data não informada';
-    }
-    try {
-      return format(new Date(dateString), 'dd/MM/yyyy HH:mm', { locale: ptBR });
     } catch {
       return 'Data inválida';
     }
@@ -146,11 +123,12 @@ export default function DetalhesRemessaScreen() {
       .reduce((total, venda) => total + venda.total_preco, 0);
   };
 
-  const getProdutoById = (produtoId: number) => {
+  const getProdutoById = (produtoId: string | null) => {
+    if (!produtoId) return undefined;
     return remessa?.produtos?.find(p => p.id === produtoId);
   };
 
-  const getProdutoNome = (produtoId: number, item?: { produto_tipo?: string; produto_sabor?: string }) => {
+  const getProdutoNome = (produtoId: string | null, item?: { produto_tipo?: string; produto_sabor?: string }) => {
     const produto = getProdutoById(produtoId);
     if (produto) return `${produto.tipo} ${produto.sabor}`;
     if (item?.produto_tipo && item?.produto_sabor) return `${item.produto_tipo} ${item.produto_sabor}`;
@@ -159,8 +137,8 @@ export default function DetalhesRemessaScreen() {
 
   return (
     <View style={styles.container}>
-      <Header 
-        title="Detalhes da Remessa" 
+      <Header
+        title="Detalhes da Remessa"
         subtitle={formatDate(remessa.data)}
         actions={
           <>
@@ -277,7 +255,7 @@ export default function DetalhesRemessaScreen() {
                   </Text>
                 </View>
                 <View style={styles.progressContainer}>
-                  <View 
+                  <View
                     style={[
                       styles.progressFill,
                       { width: `${(produto.quantidade_vendida / produto.quantidade_inicial) * 100}%` }
@@ -314,9 +292,9 @@ export default function DetalhesRemessaScreen() {
                 }}
               />
             ))}
-            
+
             {itemsShown < vendas.length && (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.carregarMaisButton}
                 onPress={() => setItemsShown(itemsShown + 10)}
               >
@@ -329,7 +307,7 @@ export default function DetalhesRemessaScreen() {
         )}
 
         {/* Botão Nova Venda */}
-                <TouchableOpacity 
+                <TouchableOpacity
           style={styles.novaVendaButton}
                   onPress={() => router.push('/vendas/nova')}
         >
@@ -338,7 +316,7 @@ export default function DetalhesRemessaScreen() {
         </View>
       </ScrollView>
       )}
-      
+
       <ConfirmationModal
         visible={deleteModalVisible}
         title="Excluir Remessa"
@@ -351,7 +329,7 @@ export default function DetalhesRemessaScreen() {
       <ConfirmationModal
         visible={deleteVendaModalVisible}
         title="Excluir Venda"
-        message={`Tem certeza que deseja excluir a venda de ${vendaToDelete?.cliente}? Esta ação não pode ser desfeita.`}
+        message={`Tem certeza que deseja excluir a venda de ${vendaToDelete?.cliente_nome}? Esta ação não pode ser desfeita.`}
         onConfirm={handleDeleteVenda}
         onCancel={() => {
           setDeleteVendaModalVisible(false);
@@ -566,7 +544,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     gap: 8,
   },
-
   maisVendas: {
     textAlign: 'center',
     color: COLORS.textLight,

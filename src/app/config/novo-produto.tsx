@@ -1,5 +1,6 @@
 import Header from '@/components/Header';
 import { COLORS } from '@/constants/Colors';
+import { useAuth } from '@/contexts/AuthContext';
 import { ProdutoConfigService } from '@/service/produtoConfigService';
 import { ProdutoConfigCreateParams, ProdutoConfigForm } from '@/types/ProdutoConfig';
 import { useRouter } from 'expo-router';
@@ -10,6 +11,7 @@ import { ActivityIndicator, Text } from 'react-native-paper';
 const TIPOS = ['Trufa', 'Surpresa', 'Torta', 'Outro'];
 
 export default function NovoProdutoScreen() {
+  const { user } = useAuth();
   const router = useRouter();
   const [saving, setSaving] = useState(false);
 
@@ -71,6 +73,7 @@ export default function NovoProdutoScreen() {
 
       const tipoNormalizado = form.tipo.toLowerCase();
       const existing = await ProdutoConfigService.getByTipo(
+        user!.id,
         tipoNormalizado,
         tipoNormalizado === 'outro' ? form.tipoCustomizado.trim() : undefined
       );
@@ -88,7 +91,7 @@ export default function NovoProdutoScreen() {
         quantidade_promocao: form.quantidade_promocao.trim() ? parseInt(form.quantidade_promocao) : undefined,
       };
 
-      await ProdutoConfigService.create(produtoData);
+      await ProdutoConfigService.create(user!.id, produtoData);
       router.back();
     } catch (error) {
       console.error('Erro ao salvar configuração:', error);

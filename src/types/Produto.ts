@@ -1,6 +1,7 @@
 export interface Produto {
-    id: number;
-    remessa_id: number;
+    id: string;
+    remessa_id: string;
+    produto_config_id?: string;
     tipo: string;
     sabor: string;
     quantidade_inicial: number;
@@ -13,7 +14,7 @@ export interface Produto {
 }
 
 export interface ProdutoCreateParams {
-    remessa_id: number;
+    remessa_id: string;
     tipo: string;
     sabor: string;
     quantidade_inicial: number;
@@ -21,9 +22,9 @@ export interface ProdutoCreateParams {
     preco_base: number;
     preco_promocao?: number;
     quantidade_promocao?: number;
+    produto_config_id?: string;
 }
 
-// Para produtos criados dentro de uma remessa (sem remessa_id)
 export interface ProdutoParaRemessa {
     tipo: string;
     sabor: string;
@@ -32,5 +33,5 @@ export interface ProdutoParaRemessa {
     preco_base: number;
     preco_promocao?: number;
     quantidade_promocao?: number;
-    produto_config_id?: number;
+    produto_config_id?: string;
 }

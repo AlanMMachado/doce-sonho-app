@@ -2,6 +2,7 @@ import ConfigMenuButton from '@/components/ConfigMenuButton';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import Header from '@/components/Header';
 import { COLORS } from '@/constants/Colors';
+import { useAuth } from '@/contexts/AuthContext';
 import { useScreenData } from '@/hooks/useScreenData';
 import { RemessaService } from '@/service/remessaService';
 import { Remessa } from '@/types/Remessa';
@@ -14,14 +15,15 @@ import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from '
 import { ActivityIndicator, Text } from 'react-native-paper';
 
 export default function RemessasScreen() {
+  const { user } = useAuth();
   const router = useRouter();
   const [remessas, setRemessas] = useState<Remessa[]>([]);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  const [selectedRemessaId, setSelectedRemessaId] = useState<number | null>(null);
+  const [selectedRemessaId, setSelectedRemessaId] = useState<string | null>(null);
 
   const carregarRemessas = async () => {
     try {
-      const todasRemessas = await RemessaService.getAll();
+      const todasRemessas = await RemessaService.getAll(user!.id);
       setRemessas(todasRemessas);
     } catch (error) {
       console.error('Erro ao carregar remessas:', error);
@@ -33,7 +35,7 @@ export default function RemessasScreen() {
   const handleDelete = async () => {
     if (selectedRemessaId) {
       try {
-        await RemessaService.delete(selectedRemessaId);
+        await RemessaService.delete(user!.id, selectedRemessaId!);
         await carregarRemessas(); // reload list
       } catch (error) {
         console.error('Erro ao excluir remessa:', error);
@@ -44,9 +46,9 @@ export default function RemessasScreen() {
     }
   };
 
-  const handleToggleAtiva = async (remessaId: number) => {
+  const handleToggleAtiva = async (remessaId: string) => {
     try {
-      await RemessaService.toggleAtiva(remessaId);
+      await RemessaService.toggleAtiva(user!.id, remessaId);
       await carregarRemessas();
     } catch (error) {
       console.error('Erro ao alterar status da remessa:', error);
@@ -135,10 +137,10 @@ export default function RemessasScreen() {
                   <View style={styles.headerBadges}>
                     <View style={[
                       styles.ativaBadge,
-                      remessa.ativa === 1 ? styles.ativaBadgeAtiva : styles.ativaBadgeInativa,
+                      remessa.ativa === true ? styles.ativaBadgeAtiva : styles.ativaBadgeInativa,
                     ]}>
                       <Text style={styles.ativaText}>
-                        {remessa.ativa === 1 ? 'Ativa' : 'Inativa'}
+                        {remessa.ativa === true ? 'Ativa' : 'Inativa'}
                       </Text>
                     </View>
                     <View style={styles.statusBadge}>
@@ -196,11 +198,11 @@ export default function RemessasScreen() {
                     <TouchableOpacity 
                       style={[
                         styles.toggleCardButton,
-                        { borderColor: remessa.ativa === 1 ? '#16a34a' : '#dc2626' }
+                        { borderColor: remessa.ativa === true ? '#16a34a' : '#dc2626' }
                       ]} 
                       onPress={() => handleToggleAtiva(remessa.id)}
                     >
-                      <Power size={16} color={remessa.ativa === 1 ? '#16a34a' : '#dc2626'} />
+                      <Power size={16} color={remessa.ativa === true ? '#16a34a' : '#dc2626'} />
                     </TouchableOpacity>
                     <TouchableOpacity 
                       style={styles.editCardButton} 

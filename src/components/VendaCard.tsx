@@ -7,7 +7,7 @@ import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 
-type ProdutoNomeResolver = (produtoId: number, item?: ItemVenda) => string;
+type ProdutoNomeResolver = (produtoId: string | null, item?: ItemVenda) => string;
 
 interface VendaCardProps {
   venda: Venda;
@@ -34,7 +34,7 @@ export default function VendaCard({
         {/* Info: cliente + itens */}
         <View style={styles.vendaInfo}>
           <Text style={styles.vendaCliente}>
-            {venda.cliente || 'Cliente'}
+            {venda.cliente_nome || 'Cliente'}
             {showDate && (
               <Text style={styles.vendaHora}>
                 {' '}- {format(parseISO(venda.data), 'HH:mm', { locale: ptBR })}

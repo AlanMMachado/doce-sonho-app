@@ -1,12 +1,12 @@
 export interface ItemVenda {
-    id: number;
-    venda_id: number;
-    produto_id: number;
+    id: string;
+    venda_id: string;
+    produto_id: string | null;
     produto_tipo?: string;
     produto_sabor?: string;
     quantidade: number;
     preco_base: number;
-    preco_desconto?: number;
+    preco_promocao?: number;
     subtotal: number;
 }
 
@@ -14,15 +14,16 @@ export interface ItemVendaForm {
     produto_id: string;
     quantidade: string;
     preco_base: string;
-    preco_desconto?: string;
+    preco_promocao?: string;
     subtotal: string;
     quantidade_com_desconto?: string;
     quantidade_sem_desconto?: string;
 }
 
 export interface Venda {
-    id: number;
-    cliente: string;
+    id: string;
+    cliente_id: string;
+    cliente_nome: string;
     data: string; // ISO string
     status: 'OK' | 'PENDENTE';
     metodo_pagamento?: string;
@@ -32,7 +33,7 @@ export interface Venda {
 }
 
 export interface VendaCreateParams {
-    cliente: string;
+    cliente_nome: string;
     data: string;
     status: 'OK' | 'PENDENTE';
     metodo_pagamento?: string;
@@ -40,7 +41,7 @@ export interface VendaCreateParams {
 }
 
 export interface VendaUpdateParams {
-    cliente?: string;
+    cliente_nome?: string;
     data?: string;
     status?: 'OK' | 'PENDENTE';
     metodo_pagamento?: string;

@@ -1,5 +1,5 @@
 export interface Configuracao {
-    id: number;
+    id: string;
     chave: string;
     valor: string;
     tipo: 'string' | 'float' | 'integer';

@@ -1,6 +1,7 @@
-import { db } from '@/database/db';
+import { supabase } from '@/lib/supabase';
 import { Produto } from '../types/Produto';
 import { ItemVenda, ItemVendaForm, Venda, VendaCreateParams, VendaUpdateParams } from '../types/Venda';
+import { ClienteService } from './clienteService';
 
 export const calcularSubtotalComLotes = (
     quantidade: number,
@@ -15,10 +16,8 @@ export const calcularSubtotalComLotes = (
     const numLotesPromocao = Math.floor(quantidade / quantidade_promocao);
     const itensComPrecoPromocao = numLotesPromocao * quantidade_promocao;
     const unidadesRestantes = quantidade % quantidade_promocao;
-    const subtotalPromocional = itensComPrecoPromocao * preco_promocao;
-    const subtotalNormal = unidadesRestantes * preco_base;
 
-    return subtotalPromocional + subtotalNormal;
+    return itensComPrecoPromocao * preco_promocao + unidadesRestantes * preco_base;
 };
 
 export const verificarPromocaoAplicada = (
@@ -27,13 +26,12 @@ export const verificarPromocaoAplicada = (
     produtos: Produto[]
 ): boolean => {
     if (!item.produto_id) return false;
-    const produto = produtos.find(p => p.id.toString() === item.produto_id);
+    const produto = produtos.find(p => p.id === item.produto_id);
     if (!produto || !produto.preco_promocao || !produto.quantidade_promocao) return false;
 
-    // Calcular quantidade total do tipo
     const quantidadeTotalTipo = todosItens.reduce((total, itemAtual) => {
         if (itemAtual.produto_id && itemAtual.quantidade) {
-            const itemProduto = produtos.find(p => p.id.toString() === itemAtual.produto_id);
+            const itemProduto = produtos.find(p => p.id === itemAtual.produto_id);
             if (itemProduto && itemProduto.tipo === produto.tipo) {
                 return total + parseInt(itemAtual.quantidade);
             }
@@ -41,65 +39,48 @@ export const verificarPromocaoAplicada = (
         return total;
     }, 0);
 
-    // Verifica se há pelo menos um lote completo
     return quantidadeTotalTipo >= produto.quantidade_promocao;
 };
 
 export const recalcularTodosPrecos = (itensParaRecalcular: ItemVendaForm[], produtos: Produto[]): ItemVendaForm[] => {
-    // Criar mapa de items com índice e produto
     const itensComProduto = itensParaRecalcular.map((item, index) => {
-        const produto = produtos.find(p => p.id.toString() === item.produto_id);
+        const produto = produtos.find(p => p.id === item.produto_id);
         return { item, index, produto };
     });
 
-    // Agrupar por tipo de produto para calcular promoção globalmente
     const porTipo: { [tipo: string]: typeof itensComProduto } = {};
-    
     for (const entry of itensComProduto) {
         if (!entry.produto) continue;
         const tipo = entry.produto.tipo;
-        if (!porTipo[tipo]) {
-            porTipo[tipo] = [];
-        }
+        if (!porTipo[tipo]) porTipo[tipo] = [];
         porTipo[tipo].push(entry);
     }
 
-    // Recalcular preços considerando quantidade total por tipo
     const resultado = [...itensParaRecalcular];
 
     for (const tipo in porTipo) {
         const grupo = porTipo[tipo];
         const exemploProduto = grupo[0].produto!;
 
-        // Calcular quantidade total do tipo
-        const quantidadeTotal = grupo.reduce((sum, entry) => {
-            return sum + (parseInt(entry.item.quantidade) || 0);
-        }, 0);
+        const quantidadeTotal = grupo.reduce((sum, entry) => sum + (parseInt(entry.item.quantidade) || 0), 0);
 
         if (!exemploProduto.preco_promocao || !exemploProduto.quantidade_promocao) {
-            // Sem promoção, aplica preço base normalmente
             for (const entry of grupo) {
                 const quantidade = parseInt(entry.item.quantidade) || 0;
-                const subtotal = quantidade * exemploProduto.preco_base;
-
                 resultado[entry.index] = {
                     ...resultado[entry.index],
                     preco_base: exemploProduto.preco_base.toString(),
-                    preco_desconto: undefined,
-                    subtotal: subtotal.toFixed(2),
+                    preco_promocao: undefined,
+                    subtotal: (quantidade * exemploProduto.preco_base).toFixed(2),
                     quantidade_com_desconto: '0',
-                    quantidade_sem_desconto: quantidade.toString()
+                    quantidade_sem_desconto: quantidade.toString(),
                 };
             }
             continue;
         }
 
-        // Calcular quantas unidades podem ter desconto (lotes completos)
         const numLotes = Math.floor(quantidadeTotal / exemploProduto.quantidade_promocao);
         const unidadesComDesconto = numLotes * exemploProduto.quantidade_promocao;
-        const unidadesSemDesconto = quantidadeTotal - unidadesComDesconto;
-
-        // Distribuir unidades com desconto sequencialmente entre os items
         let remainingDesconto = unidadesComDesconto;
 
         for (const entry of grupo) {
@@ -107,16 +88,13 @@ export const recalcularTodosPrecos = (itensParaRecalcular: ItemVendaForm[], prod
             const qtdComDesconto = Math.min(quantidade, remainingDesconto);
             const qtdSemDesconto = quantidade - qtdComDesconto;
 
-            const subtotal = (qtdComDesconto * exemploProduto.preco_promocao) + 
-                            (qtdSemDesconto * exemploProduto.preco_base);
-
             resultado[entry.index] = {
                 ...resultado[entry.index],
                 preco_base: exemploProduto.preco_base.toString(),
-                preco_desconto: exemploProduto.preco_promocao.toString(),
-                subtotal: subtotal.toFixed(2),
+                preco_promocao: exemploProduto.preco_promocao.toString(),
+                subtotal: (qtdComDesconto * exemploProduto.preco_promocao + qtdSemDesconto * exemploProduto.preco_base).toFixed(2),
                 quantidade_com_desconto: qtdComDesconto.toString(),
-                quantidade_sem_desconto: qtdSemDesconto.toString()
+                quantidade_sem_desconto: qtdSemDesconto.toString(),
             };
 
             remainingDesconto -= qtdComDesconto;
@@ -127,231 +105,193 @@ export const recalcularTodosPrecos = (itensParaRecalcular: ItemVendaForm[], prod
 };
 
 export const VendaService = {
-    async create(venda: VendaCreateParams): Promise<Venda> {
-        // Calcula total_preco
+    async create(userId: string, venda: VendaCreateParams): Promise<Venda> {
+        // Garantir que o cliente existe (upsert por nome)
+        const cliente = await ClienteService.upsertByNome(userId, venda.cliente_nome);
+
         const total_preco = venda.itens.reduce((sum, item) => sum + item.subtotal, 0);
 
-        const result = await db.runAsync(
-            `INSERT INTO vendas (cliente, data, status, metodo_pagamento, total_preco)
-             VALUES (?, ?, ?, ?, ?)`,
-            [
-                venda.cliente,
-                venda.data,
-                venda.status,
-                venda.metodo_pagamento || null,
-                total_preco
-            ]
-        );
+        const { data: novaVenda, error } = await supabase
+            .from('vendas')
+            .insert({
+                user_id: userId,
+                cliente_id: cliente.id,
+                cliente_nome: venda.cliente_nome,
+                data: venda.data,
+                status: venda.status,
+                metodo_pagamento: venda.metodo_pagamento ?? null,
+                total_preco,
+            })
+            .select()
+            .single();
+        if (error) throw error;
 
-        const vendaId = result.lastInsertRowId as number;
+        const itensParaInserir = venda.itens.map(item => ({
+            user_id: userId,
+            venda_id: novaVenda.id,
+            produto_id: item.produto_id ?? null,
+            produto_tipo: item.produto_tipo ?? null,
+            produto_sabor: item.produto_sabor ?? null,
+            quantidade: item.quantidade,
+            preco_base: item.preco_base,
+            preco_promocao: item.preco_promocao ?? null,
+            subtotal: item.subtotal,
+        }));
 
-        // Insere itens
-        const itens: ItemVenda[] = [];
-        for (const item of venda.itens) {
-            const itemResult = await db.runAsync(
-                `INSERT INTO itens_venda (venda_id, produto_id, produto_tipo, produto_sabor, quantidade, preco_base, preco_desconto, subtotal)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                [vendaId, item.produto_id, item.produto_tipo || null, item.produto_sabor || null, item.quantidade, item.preco_base, item.preco_desconto || null, item.subtotal]
-            );
-            itens.push({
-                id: itemResult.lastInsertRowId as number,
-                venda_id: vendaId,
-                ...item
-            });
+        const { data: itens, error: erroItens } = await supabase
+            .from('itens_venda')
+            .insert(itensParaInserir)
+            .select();
+        if (erroItens) throw erroItens;
 
-            // Atualiza quantidade vendida do produto
-            await db.runAsync(
-                `UPDATE produtos
-                 SET quantidade_vendida = quantidade_vendida + ?
-                 WHERE id = ?`,
-                [item.quantidade, item.produto_id]
-            );
-        }
-
-        const novaVenda: Venda = {
-            id: vendaId,
-            cliente: venda.cliente,
-            data: venda.data,
-            status: venda.status,
-            metodo_pagamento: venda.metodo_pagamento,
-            total_preco,
-            itens,
-            created_at: new Date().toISOString()
-        };
-
-        return novaVenda;
+        return { ...novaVenda, itens: itens ?? [] };
     },
 
-    async getById(id: number): Promise<Venda | null> {
-        const venda = await db.getFirstAsync<Omit<Venda, 'itens'>>(
-            `SELECT * FROM vendas WHERE id = ?`,
-            [id]
-        );
-        if (!venda) return null;
-
-        const itens = await db.getAllAsync<ItemVenda>(
-            `SELECT * FROM itens_venda WHERE venda_id = ?`,
-            [id]
-        );
-
-        return { ...venda, itens };
+    async getById(userId: string, id: string): Promise<Venda | null> {
+        const { data, error } = await supabase
+            .from('vendas')
+            .select('*, itens:itens_venda(*)')
+            .eq('user_id', userId)
+            .eq('id', id)
+            .single();
+        if (error) return null;
+        return data ? { ...data, itens: data.itens as ItemVenda[] } : null;
     },
 
-    async updateStatus(id: number, status: 'OK' | 'PENDENTE'): Promise<void> {
-        await db.runAsync(
-            `UPDATE vendas SET status = ? WHERE id = ?`,
-            [status, id]
-        );
+    async updateStatus(userId: string, id: string, status: 'OK' | 'PENDENTE'): Promise<void> {
+        const { error } = await supabase
+            .from('vendas')
+            .update({ status })
+            .eq('user_id', userId)
+            .eq('id', id);
+        if (error) throw error;
     },
 
-    async update(id: number, venda: VendaUpdateParams): Promise<void> {
-        const fields = [];
-        const values = [];
+    async update(userId: string, id: string, venda: VendaUpdateParams): Promise<void> {
+        const camposVenda: Record<string, any> = {};
+        if (venda.cliente_nome !== undefined) camposVenda.cliente_nome = venda.cliente_nome;
+        if (venda.data !== undefined) camposVenda.data = venda.data;
+        if (venda.status !== undefined) camposVenda.status = venda.status;
+        if (venda.metodo_pagamento !== undefined) camposVenda.metodo_pagamento = venda.metodo_pagamento;
 
-        if (venda.cliente !== undefined) {
-            fields.push('cliente = ?');
-            values.push(venda.cliente);
-        }
-        if (venda.data !== undefined) {
-            fields.push('data = ?');
-            values.push(venda.data);
-        }
-        if (venda.status !== undefined) {
-            fields.push('status = ?');
-            values.push(venda.status);
-        }
-        if (venda.metodo_pagamento !== undefined) {
-            fields.push('metodo_pagamento = ?');
-            values.push(venda.metodo_pagamento);
-        }
-
-        if (fields.length > 0) {
-            values.push(id);
-            await db.runAsync(
-                `UPDATE vendas SET ${fields.join(', ')} WHERE id = ?`,
-                values
-            );
-        }
-
-        // Se itens foram fornecidos, substituir todos os itens
         if (venda.itens !== undefined) {
-            // Primeiro, reverter quantidades vendidas dos itens antigos
-            const itensAntigos = await db.getAllAsync<ItemVenda>(
-                `SELECT * FROM itens_venda WHERE venda_id = ?`,
-                [id]
-            );
-            for (const item of itensAntigos) {
-                await db.runAsync(
-                    `UPDATE produtos SET quantidade_vendida = quantidade_vendida - ? WHERE id = ?`,
-                    [item.quantidade, item.produto_id]
-                );
-            }
-
-            // Deletar itens antigos
-            await db.runAsync(`DELETE FROM itens_venda WHERE venda_id = ?`, [id]);
-
-            // Inserir novos itens
             const total_preco = venda.itens.reduce((sum, item) => sum + item.subtotal, 0);
-            for (const item of venda.itens) {
-                await db.runAsync(
-                    `INSERT INTO itens_venda (venda_id, produto_id, produto_tipo, produto_sabor, quantidade, preco_base, preco_desconto, subtotal)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                    [id, item.produto_id, item.produto_tipo || null, item.produto_sabor || null, item.quantidade, item.preco_base, item.preco_desconto || null, item.subtotal]
-                );
-                await db.runAsync(
-                    `UPDATE produtos SET quantidade_vendida = quantidade_vendida + ? WHERE id = ?`,
-                    [item.quantidade, item.produto_id]
-                );
-            }
+            camposVenda.total_preco = total_preco;
 
-            // Atualizar total_preco
-            await db.runAsync(
-                `UPDATE vendas SET total_preco = ? WHERE id = ?`,
-                [total_preco, id]
-            );
+            // Substituir itens
+            const { error: erroDelete } = await supabase
+                .from('itens_venda')
+                .delete()
+                .eq('venda_id', id);
+            if (erroDelete) throw erroDelete;
+
+            const itensParaInserir = venda.itens.map(item => ({
+                user_id: userId,
+                venda_id: id,
+                produto_id: item.produto_id ?? null,
+                produto_tipo: item.produto_tipo ?? null,
+                produto_sabor: item.produto_sabor ?? null,
+                quantidade: item.quantidade,
+                preco_base: item.preco_base,
+                preco_promocao: item.preco_promocao ?? null,
+                subtotal: item.subtotal,
+            }));
+
+            const { error: erroInsert } = await supabase.from('itens_venda').insert(itensParaInserir);
+            if (erroInsert) throw erroInsert;
+        }
+
+        if (Object.keys(camposVenda).length > 0) {
+            const { error } = await supabase
+                .from('vendas')
+                .update(camposVenda)
+                .eq('user_id', userId)
+                .eq('id', id);
+            if (error) throw error;
         }
     },
 
-    async getByPeriodo(inicio: string, fim: string): Promise<Venda[]> {
-        const vendas = await db.getAllAsync<Omit<Venda, 'itens'>>(
-            `SELECT * FROM vendas WHERE DATE(data) BETWEEN ? AND ? ORDER BY data DESC`,
-            [inicio, fim]
-        );
-
-        const vendasComItens: Venda[] = [];
-        for (const venda of vendas) {
-            const itens = await db.getAllAsync<ItemVenda>(
-                `SELECT * FROM itens_venda WHERE venda_id = ?`,
-                [venda.id]
-            );
-            vendasComItens.push({ ...venda, itens });
-        }
-        return vendasComItens;
+    async getByPeriodo(userId: string, inicio: string, fim: string): Promise<Venda[]> {
+        const { data, error } = await supabase
+            .from('vendas')
+            .select('*, itens:itens_venda(*)')
+            .eq('user_id', userId)
+            .gte('data', inicio)
+            .lte('data', fim)
+            .order('data', { ascending: false });
+        if (error) throw error;
+        return (data ?? []).map(v => ({ ...v, itens: v.itens as ItemVenda[] }));
     },
 
-    async getVendasRecentes(limit: number = 10): Promise<Venda[]> {
-        const vendas = await db.getAllAsync<Omit<Venda, 'itens'>>(
-            `SELECT * FROM vendas ORDER BY created_at DESC LIMIT ?`,
-            [limit]
-        );
-
-        const vendasComItens: Venda[] = [];
-        for (const venda of vendas) {
-            const itens = await db.getAllAsync<ItemVenda>(
-                `SELECT * FROM itens_venda WHERE venda_id = ?`,
-                [venda.id]
-            );
-            vendasComItens.push({ ...venda, itens });
-        }
-        return vendasComItens;
+    async getVendasRecentes(userId: string, limit: number = 10): Promise<Venda[]> {
+        const { data, error } = await supabase
+            .from('vendas')
+            .select('*, itens:itens_venda(*)')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(limit);
+        if (error) throw error;
+        return (data ?? []).map(v => ({ ...v, itens: v.itens as ItemVenda[] }));
     },
 
-    async getTotalVendidoPorPeriodo(inicio: string, fim: string): Promise<number> {
-        const result = await db.getFirstAsync<{ total: number }>(
-            `SELECT SUM(total_preco) as total FROM vendas WHERE DATE(data) BETWEEN ? AND ? AND status = 'OK'`,
-            [inicio, fim]
-        );
-        return result?.total || 0;
+    async getTotalVendidoPorPeriodo(userId: string, inicio: string, fim: string): Promise<number> {
+        const { data } = await supabase
+            .from('vendas')
+            .select('total_preco')
+            .eq('user_id', userId)
+            .eq('status', 'OK')
+            .gte('data', inicio)
+            .lte('data', fim);
+        return (data ?? []).reduce((s, v) => s + (v.total_preco ?? 0), 0);
     },
 
-    async getTotalPendentePorPeriodo(inicio: string, fim: string): Promise<number> {
-        const result = await db.getFirstAsync<{ total: number }>(
-            `SELECT SUM(total_preco) as total FROM vendas WHERE DATE(data) BETWEEN ? AND ? AND status = 'PENDENTE'`,
-            [inicio, fim]
-        );
-        return result?.total || 0;
+    async getTotalPendentePorPeriodo(userId: string, inicio: string, fim: string): Promise<number> {
+        const { data } = await supabase
+            .from('vendas')
+            .select('total_preco')
+            .eq('user_id', userId)
+            .eq('status', 'PENDENTE')
+            .gte('data', inicio)
+            .lte('data', fim);
+        return (data ?? []).reduce((s, v) => s + (v.total_preco ?? 0), 0);
     },
 
-    async delete(id: number): Promise<void> {
-        // Reverter quantidades vendidas
-        const itens = await db.getAllAsync<ItemVenda>(
-            `SELECT * FROM itens_venda WHERE venda_id = ?`,
-            [id]
-        );
-        for (const item of itens) {
-            await db.runAsync(
-                `UPDATE produtos SET quantidade_vendida = quantidade_vendida - ? WHERE id = ?`,
-                [item.quantidade, item.produto_id]
-            );
-        }
-
-        // Deletar itens e venda
-        await db.runAsync(`DELETE FROM itens_venda WHERE venda_id = ?`, [id]);
-        await db.runAsync(`DELETE FROM vendas WHERE id = ?`, [id]);
+    async delete(userId: string, id: string): Promise<void> {
+        const { error } = await supabase
+            .from('vendas')
+            .delete()
+            .eq('user_id', userId)
+            .eq('id', id);
+        if (error) throw error;
     },
 
-    // Novo método para buscar vendas por produto (através de itens)
-    async getByProduto(produtoId: number): Promise<Venda[]> {
-        const vendasIds = await db.getAllAsync<{ venda_id: number }>(
-            `SELECT DISTINCT venda_id FROM itens_venda WHERE produto_id = ?`,
-            [produtoId]
-        );
+    async getByClienteId(userId: string, clienteId: string): Promise<Venda[]> {
+        const { data, error } = await supabase
+            .from('vendas')
+            .select('*, itens:itens_venda(*)')
+            .eq('user_id', userId)
+            .eq('cliente_id', clienteId)
+            .order('data', { ascending: false });
+        if (error) throw error;
+        return (data ?? []).map(v => ({ ...v, itens: v.itens as ItemVenda[] }));
+    },
 
-        const vendas: Venda[] = [];
-        for (const { venda_id } of vendasIds) {
-            const venda = await this.getById(venda_id);
-            if (venda) vendas.push(venda);
-        }
-        return vendas.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
-    }
+    async getByProduto(userId: string, produtoId: string): Promise<Venda[]> {
+        const { data } = await supabase
+            .from('itens_venda')
+            .select('venda_id')
+            .eq('produto_id', produtoId);
+
+        if (!data || data.length === 0) return [];
+
+        const vendaIds = [...new Set(data.map(r => r.venda_id))];
+        const { data: vendas, error } = await supabase
+            .from('vendas')
+            .select('*, itens:itens_venda(*)')
+            .eq('user_id', userId)
+            .in('id', vendaIds)
+            .order('data', { ascending: false });
+        if (error) throw error;
+        return (vendas ?? []).map(v => ({ ...v, itens: v.itens as ItemVenda[] }));
+    },
 };

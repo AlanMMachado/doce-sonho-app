@@ -1,3 +1,4 @@
+import { useAuth } from '@/contexts/AuthContext';
 import { ClienteService } from '@/service/clienteService';
 import { Cliente } from '@/types/Cliente';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -21,6 +22,7 @@ export default function ClienteSearchInput({
   placeholder = "Nome do cliente",
   label = "Cliente *"
 }: ClienteSearchInputProps) {
+  const { user } = useAuth();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [sugestoes, setSugestoes] = useState<Cliente[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -57,7 +59,7 @@ export default function ClienteSearchInput({
   const carregarClientes = async () => {
     try {
       setLoading(true);
-      const clientesData = await ClienteService.getAll();
+      const clientesData = await ClienteService.getAll(user!.id);
       setClientes(clientesData);
     } catch (error) {
       console.error('Erro ao carregar clientes:', error);
@@ -206,11 +208,11 @@ export default function ClienteSearchInput({
                     <Text style={styles.sugestaoNome}>{item.nome}</Text>
                     <View style={styles.sugestaoInfo}>
                       <Text style={styles.sugestaoCompras}>
-                        {item.numeroCompras} compra{item.numeroCompras !== 1 ? 's' : ''}
+                        {item.numero_compras} compra{item.numero_compras !== 1 ? 's' : ''}
                       </Text>
-                      {item.totalDevido > 0 && (
+                      {item.total_devido > 0 && (
                         <Text style={styles.sugestaoDevido}>
-                          R$ {item.totalDevido.toFixed(2)} devido
+                          R$ {item.total_devido.toFixed(2)} devido
                         </Text>
                       )}
                     </View>

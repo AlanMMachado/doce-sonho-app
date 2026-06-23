@@ -1,30 +1,30 @@
+import { PerfilService } from '@/service/perfilService';
+import { Perfil } from '@/types/Perfil';
+import { Remessa } from '@/types/Remessa';
+import { Venda } from '@/types/Venda';
 import React, { createContext, ReactNode, useContext, useEffect, useReducer } from 'react';
-import { ConfigService } from '../service/configService';
-import { SyncService } from '../service/syncService';
-import { Remessa } from '../types/Remessa';
-import { Venda } from '../types/Venda';
+import { useAuth } from './AuthContext';
 
 interface AppState {
   remessaAtiva: Remessa | null;
   vendas: Venda[];
-  configuracoes: Record<string, any>;
+  perfil: Perfil | null;
   loading: boolean;
 }
 
-type AppAction = 
+type AppAction =
   | { type: 'SET_REMESSA_ATIVA'; payload: Remessa | null }
   | { type: 'ADD_VENDA'; payload: Venda }
   | { type: 'UPDATE_VENDA'; payload: Venda }
   | { type: 'SET_VENDAS'; payload: Venda[] }
-  | { type: 'UPDATE_CONFIG'; payload: { chave: string; valor: any } }
-  | { type: 'SET_CONFIGURACOES'; payload: Record<string, any> }
+  | { type: 'SET_PERFIL'; payload: Perfil | null }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'LOAD_DATA'; payload: Partial<AppState> };
 
 const initialState: AppState = {
   remessaAtiva: null,
   vendas: [],
-  configuracoes: {},
+  perfil: null,
   loading: false,
 };
 
@@ -35,22 +35,14 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'ADD_VENDA':
       return { ...state, vendas: [action.payload, ...state.vendas] };
     case 'UPDATE_VENDA':
-      return { 
-        ...state, 
-        vendas: state.vendas.map(v => v.id === action.payload.id ? action.payload : v) 
+      return {
+        ...state,
+        vendas: state.vendas.map(v => v.id === action.payload.id ? action.payload : v),
       };
     case 'SET_VENDAS':
       return { ...state, vendas: action.payload };
-    case 'UPDATE_CONFIG':
-      return { 
-        ...state, 
-        configuracoes: { 
-          ...state.configuracoes, 
-          [action.payload.chave]: action.payload.valor 
-        } 
-      };
-    case 'SET_CONFIGURACOES':
-      return { ...state, configuracoes: action.payload };
+    case 'SET_PERFIL':
+      return { ...state, perfil: action.payload };
     case 'SET_LOADING':
       return { ...state, loading: action.payload };
     case 'LOAD_DATA':
@@ -63,70 +55,33 @@ function appReducer(state: AppState, action: AppAction): AppState {
 interface AppContextType {
   state: AppState;
   dispatch: React.Dispatch<AppAction>;
-  recarregarConfiguracoes: () => Promise<void>;
+  recarregarPerfil: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [state, dispatch] = useReducer(appReducer, initialState);
 
-  // Função para recarregar configurações
-  const recarregarConfiguracoes = async () => {
+  const recarregarPerfil = async () => {
+    if (!user) return;
     try {
-      const configs = await ConfigService.getAllAsRecord();
-      dispatch({ type: 'SET_CONFIGURACOES', payload: configs });
+      const perfil = await PerfilService.get(user.id);
+      dispatch({ type: 'SET_PERFIL', payload: perfil });
     } catch (error) {
-      console.error('Erro ao recarregar configurações:', error);
+      console.error('Erro ao recarregar perfil:', error);
       throw error;
     }
   };
 
-  // Inicializar configurações padrão
   useEffect(() => {
-    const inicializarConfigs = async () => {
-      try {
-        await ConfigService.inicializarConfiguracoesPadrao();
-        await recarregarConfiguracoes();
-      } catch (error) {
-        console.error('Erro ao inicializar configurações:', error);
-      }
-    };
-
-    inicializarConfigs();
-  }, []);
-
-  // Sincronizar clientes na inicialização do app
-  useEffect(() => {
-    const syncClientes = async () => {
-      try {
-        await SyncService.syncAllClientes();
-      } catch (error) {
-        console.error('Erro ao sincronizar clientes:', error);
-      }
-    };
-
-    syncClientes();
-  }, []);
-
-  // Sincronizar cliente quando uma venda é adicionada ou atualizada
-  useEffect(() => {
-    const syncClienteFromVenda = async (venda: Venda) => {
-      try {
-        await SyncService.syncClienteFromVenda(venda);
-      } catch (error) {
-        console.error('Erro ao sincronizar cliente da venda:', error);
-      }
-    };
-
-    if (state.vendas.length > 0) {
-      const ultimaVenda = state.vendas[state.vendas.length - 1];
-      syncClienteFromVenda(ultimaVenda);
-    }
-  }, [state.vendas]);
+    if (!user) return;
+    recarregarPerfil();
+  }, [user?.id]);
 
   return (
-    <AppContext.Provider value={{ state, dispatch, recarregarConfiguracoes }}>
+    <AppContext.Provider value={{ state, dispatch, recarregarPerfil }}>
       {children}
     </AppContext.Provider>
   );

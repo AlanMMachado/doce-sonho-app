@@ -3,6 +3,7 @@ import Header from '@/components/Header';
 import VendaCard from '@/components/VendaCard';
 import { COLORS } from '@/constants/Colors';
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { ProdutoService } from '@/service/produtoService';
 import { RelatorioService } from '@/service/relatorioService';
 import { VendaService } from '@/service/vendaService';
@@ -16,9 +17,10 @@ import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from '
 import { ActivityIndicator, Text } from 'react-native-paper';
 
 export default function DashboardScreen() {
-  const { state, dispatch, recarregarConfiguracoes } = useApp();
+  const { user } = useAuth();
+  const { state, dispatch, recarregarPerfil } = useApp();
   const router = useRouter();
-  const [produtos, setProdutos] = useState<{[key: number]: Produto}>({});
+  const [produtos, setProdutos] = useState<{[key: string]: Produto}>({});
   const [kpis, setKpis] = useState({
     totalVendido: 0,
     totalPendente: 0,
@@ -31,30 +33,29 @@ export default function DashboardScreen() {
     try {
       const hoje = new Date().toISOString().split('T')[0];
       
-      const vendasRecentes = await VendaService.getVendasRecentes(10);
+      const vendasRecentes = await VendaService.getVendasRecentes(user!.id, 10);
       dispatch({ type: 'SET_VENDAS', payload: vendasRecentes });
-      
+
       // Buscar produtos para exibir nomes nas vendas
-      const produtoIds = [...new Set(vendasRecentes.flatMap(v => v.itens.map(item => item.produto_id)))];
-      const produtosMap: {[key: number]: Produto} = {};
+      const produtoIds = [...new Set(vendasRecentes.flatMap(v => v.itens.map(item => item.produto_id)).filter((id): id is string => id !== null))];
+      const produtosMap: {[key: string]: Produto} = {};
       for (const id of produtoIds) {
-        const produto = await ProdutoService.getById(id);
+        const produto = await ProdutoService.getById(user!.id, id);
         if (produto) {
           produtosMap[id] = produto;
         }
       }
       setProdutos(produtosMap);
-      
-      // Recarregar configurações mais recentes do banco
-      await recarregarConfiguracoes();
-      
-      const relatorio = await RelatorioService.gerarRelatorio({ 
+
+      await recarregarPerfil();
+
+      const relatorio = await RelatorioService.gerarRelatorio(user!.id, {
         periodo: 'dia',
         data_inicio: hoje,
         data_fim: hoje
       });
-      
-      const metaValor = state.configuracoes.meta_diaria_valor || 200;
+
+      const metaValor = state.perfil?.meta_diaria ?? 200;
       setMetaDiariaValor(metaValor);
       const totalGeral = relatorio.total_vendido + relatorio.total_pendente;
       
@@ -73,8 +74,8 @@ export default function DashboardScreen() {
   const { loading, refreshing, onRefresh } = useScreenData(carregarDados);
 
   // Garantir que o estado produtos seja usado
-  const getProdutoNome = (produtoId: number, item?: { produto_tipo?: string; produto_sabor?: string }) => {
-    const produto = produtos[produtoId];
+  const getProdutoNome = (produtoId: string | null, item?: { produto_tipo?: string; produto_sabor?: string }) => {
+    const produto = produtoId ? produtos[produtoId] : undefined;
     if (produto) return `${produto.tipo} ${produto.sabor}`;
     if (item?.produto_tipo && item?.produto_sabor) return `${item.produto_tipo} ${item.produto_sabor}`;
     return 'Produto removido';

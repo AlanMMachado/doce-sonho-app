@@ -2,13 +2,11 @@ import ConfirmationModal from '@/components/ConfirmationModal';
 import Header from '@/components/Header';
 import VendaCard from '@/components/VendaCard';
 import { COLORS } from '@/constants/Colors';
+import { useAuth } from '@/contexts/AuthContext';
 import { useScreenData } from '@/hooks/useScreenData';
 import { ClienteService } from '@/service/clienteService';
-import { ProdutoService } from '@/service/produtoService';
-import { SyncService } from '@/service/syncService';
 import { VendaService } from '@/service/vendaService';
 import { Cliente } from '@/types/Cliente';
-import { Produto } from '@/types/Produto';
 import { Venda } from '@/types/Venda';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Clock, DollarSign, ShoppingCart, XCircle } from 'lucide-react-native';
@@ -16,16 +14,18 @@ import React, { useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Text } from 'react-native-paper';
 
+type ClienteComVendas = Cliente & {
+  vendas: Venda[];
+  vendasPagas: Venda[];
+  vendasPendentes: Venda[];
+  primeiraCompra: string;
+};
+
 export default function ClienteDetalhesScreen() {
+  const { user } = useAuth();
   const { nome } = useLocalSearchParams<{ nome: string }>();
   const router = useRouter();
-  const [cliente, setCliente] = useState<(Omit<Cliente, 'vendas'> & {
-    vendas: Venda[];
-    vendasPagas: Venda[];
-    vendasPendentes: Venda[];
-    primeiraCompra: string;
-  }) | null>(null);
-  const [produtos, setProdutos] = useState<Record<number, Produto>>({});
+  const [cliente, setCliente] = useState<ClienteComVendas | null>(null);
   const [modalPagamentoVisible, setModalPagamentoVisible] = useState(false);
   const [vendaParaMarcar, setVendaParaMarcar] = useState<Venda | null>(null);
 
@@ -33,43 +33,22 @@ export default function ClienteDetalhesScreen() {
     try {
       const nomeCliente = decodeURIComponent(nome);
 
-      // Buscar cliente do banco
-      const clienteData = await ClienteService.getByNome(nomeCliente);
+      const clienteData = await ClienteService.getByNome(user!.id, nomeCliente);
 
       if (!clienteData) {
         router.back();
         return;
       }
 
-      // Buscar vendas do cliente
-      const vendasCliente: Venda[] = [];
-      for (const vendaId of clienteData.vendas) {
-        const venda = await VendaService.getById(vendaId);
-        if (venda) {
-          vendasCliente.push(venda);
-        }
-      }
+      const vendasCliente = await VendaService.getByClienteId(user!.id, clienteData.id);
 
-      // Buscar produtos para exibir nomes
-      const produtoIds = [...new Set(vendasCliente.flatMap(v => v.itens.map(item => item.produto_id)))];
-      const produtosMap: Record<number, Produto> = {};
-      for (const id of produtoIds) {
-        const produto = await ProdutoService.getById(id);
-        if (produto) {
-          produtosMap[id] = produto;
-        }
-      }
-      setProdutos(produtosMap);
-
-      // Separar vendas pagas e pendentes
       const vendasPagas = vendasCliente.filter(v => v.status === 'OK');
       const vendasPendentes = vendasCliente.filter(v => v.status === 'PENDENTE');
 
-      // Calcular primeira compra
       const primeiraCompra = vendasCliente.length > 0 ?
         vendasCliente.reduce((maisAntiga, atual) =>
           new Date(atual.data) < new Date(maisAntiga.data) ? atual : maisAntiga
-        ).data : clienteData.dataCadastro;
+        ).data : clienteData.data_cadastro;
 
       setCliente({
         ...clienteData,
@@ -89,15 +68,8 @@ export default function ClienteDetalhesScreen() {
 
   const marcarComoPago = async (venda: Venda) => {
     try {
-      await VendaService.updateStatus(venda.id, 'OK');
-      
-      // Carregar venda atualizada e sincronizar cliente
-      const vendaAtualizada = await VendaService.getById(venda.id);
-      if (vendaAtualizada) {
-        await SyncService.syncClienteFromVenda(vendaAtualizada);
-      }
-      
-      await carregarCliente(); // Recarregar dados
+      await VendaService.updateStatus(user!.id, venda.id, 'OK');
+      await carregarCliente();
       setModalPagamentoVisible(false);
       setVendaParaMarcar(null);
     } catch (error) {
@@ -106,17 +78,15 @@ export default function ClienteDetalhesScreen() {
     }
   };
 
-  const getProdutoNome = (produtoId: number, item?: { produto_tipo?: string; produto_sabor?: string }) => {
-    const produto = produtos[produtoId];
-    if (produto) return `${produto.tipo} ${produto.sabor}`;
+  const getProdutoNome = (produtoId: string | null, item?: { produto_tipo?: string; produto_sabor?: string }) => {
     if (item?.produto_tipo && item?.produto_sabor) return `${item.produto_tipo} ${item.produto_sabor}`;
     return 'Produto removido';
   };
 
   const calcularDiasDesdeUltimaCompra = () => {
-    if (!cliente) return 0;
+    if (!cliente?.ultima_compra) return 0;
     const hoje = new Date();
-    const ultima = new Date(cliente.ultimaCompra);
+    const ultima = new Date(cliente.ultima_compra);
     return Math.floor((hoje.getTime() - ultima.getTime()) / (1000 * 60 * 60 * 24));
   };
 
@@ -135,7 +105,7 @@ export default function ClienteDetalhesScreen() {
     <View style={styles.container}>
       <Header
         title="Histórico de compras"
-        subtitle={`${cliente.numeroCompras} compra${cliente.numeroCompras !== 1 ? 's' : ''}`}
+        subtitle={`${cliente.numero_compras} compra${cliente.numero_compras !== 1 ? 's' : ''}`}
       />
 
       {loading ? (
@@ -177,11 +147,10 @@ export default function ClienteDetalhesScreen() {
 
             {/* Métricas Principais */}
             <View style={styles.metricasContainer}>
-              {/* Primeira linha: Total de Compras e Dias desde última compra */}
               <View style={styles.metricasRow}>
                 <View style={styles.metricaCard}>
                   <ShoppingCart size={20} color="#059669" />
-                  <Text style={styles.metricaValor}>{cliente.numeroCompras}</Text>
+                  <Text style={styles.metricaValor}>{cliente.numero_compras}</Text>
                   <Text style={styles.metricaLabel}>Total de Compras</Text>
                 </View>
 
@@ -192,22 +161,21 @@ export default function ClienteDetalhesScreen() {
                 </View>
               </View>
 
-              {/* Segunda linha: Total comprado esticado */}
               <View style={styles.metricaCardFull}>
                 <DollarSign size={20} color="#2563eb" />
-                <Text style={styles.metricaValor}>R$ {(cliente.totalComprado || 0).toFixed(2)}</Text>
+                <Text style={styles.metricaValor}>R$ {(cliente.total_comprado || 0).toFixed(2)}</Text>
                 <Text style={styles.metricaLabel}>Total Comprado</Text>
               </View>
             </View>
 
             {/* Valor Devido (se houver) */}
-            {cliente.totalDevido > 0 && (
+            {cliente.total_devido > 0 && (
               <View style={styles.dividaCard}>
                 <View style={styles.dividaHeader}>
                   <XCircle size={20} color="#dc2626" />
                   <Text style={styles.dividaTitle}>Valor em Aberto</Text>
                 </View>
-                <Text style={styles.dividaValor}>R$ {(cliente.totalDevido || 0).toFixed(2)}</Text>
+                <Text style={styles.dividaValor}>R$ {(cliente.total_devido || 0).toFixed(2)}</Text>
                 <Text style={styles.dividaSubtext}>
                   {cliente.vendasPendentes.length} venda{cliente.vendasPendentes.length !== 1 ? 's' : ''} pendente{cliente.vendasPendentes.length !== 1 ? 's' : ''}
                 </Text>
@@ -404,5 +372,4 @@ const styles = StyleSheet.create({
     color: COLORS.textDark,
     marginBottom: 16,
   },
-
 });

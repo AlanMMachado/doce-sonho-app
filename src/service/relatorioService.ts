@@ -1,108 +1,77 @@
-import { db } from '@/database/db';
+import { supabase } from '@/lib/supabase';
 import { RelatorioParams, RelatorioResponse } from '@/types/Relatorio';
 
+function calcularIntervalo(params: RelatorioParams): { dataInicio: string; dataFim: string } {
+    if (params.data_inicio && params.data_fim) {
+        return { dataInicio: params.data_inicio, dataFim: params.data_fim };
+    }
+
+    const hoje = new Date();
+    const hojeStr = hoje.toISOString().split('T')[0];
+
+    switch (params.periodo) {
+        case 'dia':
+            return { dataInicio: hojeStr, dataFim: hojeStr };
+        case 'semana': {
+            const inicio = new Date(hoje);
+            inicio.setDate(hoje.getDate() - 7);
+            return { dataInicio: inicio.toISOString().split('T')[0], dataFim: hojeStr };
+        }
+        case 'mes': {
+            const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+            return { dataInicio: inicio.toISOString().split('T')[0], dataFim: hojeStr };
+        }
+        default:
+            return { dataInicio: hojeStr, dataFim: hojeStr };
+    }
+}
+
 export const RelatorioService = {
-    async gerarRelatorio(params: RelatorioParams): Promise<RelatorioResponse> {
-        const { periodo, data_inicio, data_fim } = params;
-        
-        let dataInicio: string;
-        let dataFim: string;
-        
-        if (data_inicio && data_fim) {
-            dataInicio = data_inicio;
-            dataFim = data_fim;
-        } else {
-            const hoje = new Date();
-            const hojeStr = hoje.toISOString().split('T')[0];
-            
-            switch (periodo) {
-                case 'dia':
-                    dataInicio = hojeStr;
-                    dataFim = hojeStr;
-                    break;
-                case 'semana':
-                    const inicioSemana = new Date(hoje);
-                    inicioSemana.setDate(hoje.getDate() - 7);
-                    dataInicio = inicioSemana.toISOString().split('T')[0];
-                    dataFim = hojeStr;
-                    break;
-                case 'mes':
-                    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-                    dataInicio = inicioMes.toISOString().split('T')[0];
-                    dataFim = hojeStr;
-                    break;
-                default:
-                    dataInicio = hojeStr;
-                    dataFim = hojeStr;
+    async gerarRelatorio(userId: string, params: RelatorioParams): Promise<RelatorioResponse> {
+        const { dataInicio, dataFim } = calcularIntervalo(params);
+
+        // Buscar todas as vendas do período com itens e produto
+        const { data: vendas, error } = await supabase
+            .from('vendas')
+            .select('total_preco, status, itens:itens_venda(quantidade, subtotal, produto_tipo, produto_sabor, produto_id, produto:produtos(custo_producao))')
+            .eq('user_id', userId)
+            .gte('data', dataInicio)
+            .lte('data', dataFim);
+
+        if (error) throw error;
+
+        let total_vendido = 0;
+        let total_pendente = 0;
+        let quantidade_vendida = 0;
+        let custo_total = 0;
+        const produtoMap: Record<string, { quantidade: number; valor_total: number }> = {};
+
+        for (const venda of vendas ?? []) {
+            if (venda.status === 'OK') total_vendido += venda.total_preco ?? 0;
+            if (venda.status === 'PENDENTE') total_pendente += venda.total_preco ?? 0;
+
+            for (const item of (venda.itens as any[]) ?? []) {
+                quantidade_vendida += item.quantidade ?? 0;
+                custo_total += ((item.produto as any)?.custo_producao ?? 0) * (item.quantidade ?? 0);
+
+                const nomeProduto = `${item.produto_tipo ?? '?'} - ${item.produto_sabor ?? '?'}`;
+                if (!produtoMap[nomeProduto]) produtoMap[nomeProduto] = { quantidade: 0, valor_total: 0 };
+                produtoMap[nomeProduto].quantidade += item.quantidade ?? 0;
+                produtoMap[nomeProduto].valor_total += item.subtotal ?? 0;
             }
         }
-        
-        // Total vendido (status OK)
-        const totalVendidoResult = await db.getFirstAsync<{ total: number }>(
-            `SELECT SUM(v.total_preco) as total 
-             FROM vendas v
-             WHERE DATE(v.data) BETWEEN ? AND ? AND v.status = 'OK'`,
-            [dataInicio, dataFim]
-        );
-        
-        // Total pendente
-        const totalPendenteResult = await db.getFirstAsync<{ total: number }>(
-            `SELECT SUM(v.total_preco) as total 
-             FROM vendas v
-             WHERE DATE(v.data) BETWEEN ? AND ? AND v.status = 'PENDENTE'`,
-            [dataInicio, dataFim]
-        );
-        
-        // Quantidade vendida
-        const quantidadeVendidaResult = await db.getFirstAsync<{ total: number }>(
-            `SELECT SUM(iv.quantidade) as total 
-             FROM vendas v
-             INNER JOIN itens_venda iv ON v.id = iv.venda_id
-             WHERE DATE(v.data) BETWEEN ? AND ?`,
-            [dataInicio, dataFim]
-        );
-        
-        // Custo total dos produtos vendidos
-        const custoTotalResult = await db.getFirstAsync<{ total: number }>(
-            `SELECT SUM(p.custo_producao * iv.quantidade) as total 
-             FROM vendas v
-             INNER JOIN itens_venda iv ON v.id = iv.venda_id
-             INNER JOIN produtos p ON iv.produto_id = p.id
-             WHERE DATE(v.data) BETWEEN ? AND ?`,
-            [dataInicio, dataFim]
-        );
-        
-        // Produtos mais vendidos
-        const produtosMaisVendidos = await db.getAllAsync<{
-            produto: string;
-            quantidade: number;
-            valor_total: number;
-        }>(
-            `SELECT p.tipo || ' - ' || p.sabor as produto,
-                    SUM(iv.quantidade) as quantidade,
-                    SUM(iv.subtotal) as valor_total
-             FROM vendas v
-             INNER JOIN itens_venda iv ON v.id = iv.venda_id
-             INNER JOIN produtos p ON iv.produto_id = p.id
-             WHERE DATE(v.data) BETWEEN ? AND ?
-             GROUP BY p.tipo, p.sabor
-             ORDER BY quantidade DESC
-             LIMIT 5`,
-            [dataInicio, dataFim]
-        );
-        
-        const totalVendido = totalVendidoResult?.total || 0;
-        const totalPendente = totalPendenteResult?.total || 0;
-        const quantidadeVendida = quantidadeVendidaResult?.total || 0;
-        const custoTotal = custoTotalResult?.total || 0;
-        const totalLucro = totalVendido - custoTotal;
-        
+
+        const produtos_mais_vendidos = Object.entries(produtoMap)
+            .map(([produto, v]) => ({ produto, ...v }))
+            .sort((a, b) => b.quantidade - a.quantidade)
+            .slice(0, 5);
+
         return {
-            total_vendido: totalVendido,
-            total_pendente: totalPendente,
-            total_lucro: totalLucro,
-            quantidade_vendida: quantidadeVendida,
-            produtos_mais_vendidos: produtosMaisVendidos
+            total_vendido,
+            total_pendente,
+            total_lucro: total_vendido - custo_total,
+            quantidade_vendida,
+            produtos_mais_vendidos,
         };
-    }
+    },
 };

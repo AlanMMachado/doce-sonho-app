@@ -17,9 +17,9 @@ export default function ConfigScreen() {
       icon: Package,
     },
     {
-      title: 'Metas',
-      description: 'Configure metas diárias de vendas',
-      onPress: () => router.push('/config/metas'),
+      title: 'Meu Perfil',
+      description: 'Edite seus dados pessoais e meta diária',
+      onPress: () => router.push('/config/perfil'),
       icon: Settings,
     },
   ];

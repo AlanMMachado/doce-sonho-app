@@ -1,5 +1,6 @@
 import Header from '@/components/Header';
 import { COLORS } from '@/constants/Colors';
+import { useAuth } from '@/contexts/AuthContext';
 import { useScreenData } from '@/hooks/useScreenData';
 import { ProdutoConfigService } from '@/service/produtoConfigService';
 import { ProdutoConfig } from '@/types/ProdutoConfig';
@@ -10,12 +11,13 @@ import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-nat
 import { ActivityIndicator, Text } from 'react-native-paper';
 
 export default function ConfigProdutosScreen() {
+  const { user } = useAuth();
   const router = useRouter();
   const [produtosConfig, setProdutosConfig] = useState<ProdutoConfig[]>([]);
 
   const loadProdutosConfig = async () => {
     try {
-      const produtos = await ProdutoConfigService.getAll();
+      const produtos = await ProdutoConfigService.getAll(user!.id);
       setProdutosConfig(produtos);
     } catch (error) {
       console.error('Erro ao carregar configurações:', error);
@@ -36,7 +38,7 @@ export default function ConfigProdutosScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await ProdutoConfigService.delete(produto.id);
+              await ProdutoConfigService.delete(user!.id, produto.id);
               await loadProdutosConfig();
             } catch (error) {
               console.error('Erro ao excluir configuração:', error);

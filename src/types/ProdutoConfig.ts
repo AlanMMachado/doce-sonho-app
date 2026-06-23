@@ -1,5 +1,5 @@
 export interface ProdutoConfig {
-    id: number;
+    id: string;
     tipo: string;
     tipo_customizado?: string;
     preco_base: number;

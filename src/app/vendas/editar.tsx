@@ -2,8 +2,8 @@ import ClienteSearchInput from '@/components/ClienteSearchInput';
 import Header from '@/components/Header';
 import { COLORS } from '@/constants/Colors';
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { RemessaService } from '@/service/remessaService';
-import { SyncService } from '@/service/syncService';
 import { VendaService, recalcularTodosPrecos } from '@/service/vendaService';
 import { Produto } from '@/types/Produto';
 import { ItemVendaForm, Venda } from '@/types/Venda';
@@ -16,6 +16,7 @@ import { ActivityIndicator, Text, TextInput } from 'react-native-paper';
 const { width } = Dimensions.get('window');
 
 export default function EditarVendaScreen() {
+  const { user } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { dispatch } = useApp();
@@ -25,7 +26,7 @@ export default function EditarVendaScreen() {
   const [venda, setVenda] = useState<Venda | null>(null);
   const [itens, setItens] = useState<ItemVendaForm[]>([]);
   const [formData, setFormData] = useState({
-    cliente: '',
+    cliente_nome: '',
     status: 'OK' as 'OK' | 'PENDENTE',
     metodo_pagamento: 'PIX'
   });
@@ -34,8 +35,7 @@ export default function EditarVendaScreen() {
     try {
       setLoading(true);
 
-      // Carregar venda
-      const vendaData = await VendaService.getById(parseInt(id));
+      const vendaData = await VendaService.getById(user!.id, id);
       if (!vendaData) {
         alert('Venda não encontrada');
         router.back();
@@ -43,41 +43,37 @@ export default function EditarVendaScreen() {
       }
       setVenda(vendaData);
 
-      // Obter IDs dos produtos que estão sendo editados
       const produtosEmEdicao = new Set(vendaData.itens.map(item => item.produto_id));
 
-      // Carregar produtos disponíveis
-      const remessasAtivas = await RemessaService.getAtivas();
+      const remessasAtivas = await RemessaService.getAtivas(user!.id);
       const todosProdutos: Produto[] = [];
 
       for (const remessa of remessasAtivas) {
-        const produtosRemessa = await RemessaService.getProdutosByRemessaId(remessa.id);
+        const produtosRemessa = await RemessaService.getProdutosByRemessaId(user!.id, remessa.id);
         const produtosDisponiveis = produtosRemessa.filter(p => {
           const temEstoque = p.quantidade_inicial - p.quantidade_vendida > 0;
           const estaEmEdicao = produtosEmEdicao.has(p.id);
-          return temEstoque || estaEmEdicao; // Incluir se tem estoque OU se está sendo editado
+          return temEstoque || estaEmEdicao;
         });
         todosProdutos.push(...produtosDisponiveis);
       }
 
       setProdutos(todosProdutos);
 
-      // Carregar itens da venda
       const itensForm: ItemVendaForm[] = vendaData.itens.map(item => ({
-        produto_id: item.produto_id.toString(),
+        produto_id: item.produto_id ?? '',
         quantidade: item.quantidade.toString(),
         preco_base: item.preco_base.toFixed(2),
-        preco_desconto: item.preco_desconto ? item.preco_desconto.toFixed(2) : undefined,
+        preco_promocao: item.preco_promocao ? item.preco_promocao.toFixed(2) : undefined,
         subtotal: item.subtotal.toFixed(2),
-        quantidade_com_desconto: item.preco_desconto ? (Math.floor(item.quantidade / (item.preco_desconto ? 3 : 1)) * (item.preco_desconto ? 3 : 1)).toString() : '0',
-        quantidade_sem_desconto: item.preco_desconto ? (item.quantidade % (item.preco_desconto ? 3 : 1)).toString() : item.quantidade.toString()
+        quantidade_com_desconto: '0',
+        quantidade_sem_desconto: item.quantidade.toString()
       }));
 
       setItens(itensForm);
 
-      // Preencher formulário
       setFormData({
-        cliente: vendaData.cliente,
+        cliente_nome: vendaData.cliente_nome,
         status: vendaData.status,
         metodo_pagamento: vendaData.metodo_pagamento || 'PIX'
       });
@@ -99,37 +95,32 @@ export default function EditarVendaScreen() {
   );
 
   const setProductQuantidade = (produtoId: string, quantidade: number) => {
-    const produto = produtos.find(p => p.id.toString() === produtoId);
+    const produto = produtos.find(p => p.id === produtoId);
     if (!produto) return;
 
     const estoqueDisponivel = produto.quantidade_inicial - produto.quantidade_vendida;
-    
-    // Validar quantidade máxima
+
     if (quantidade > estoqueDisponivel) {
       quantidade = estoqueDisponivel;
     }
 
     if (quantidade <= 0) {
-      // Remover o produto se quantidade é 0
       const novosItens = itens.filter(item => item.produto_id !== produtoId);
       setItens(novosItens);
     } else {
-      // Verificar se o produto já existe nos itens
       const itemExistente = itens.findIndex(item => item.produto_id === produtoId);
-      
+
       if (itemExistente >= 0) {
-        // Atualizar quantidade do item existente
         const novosItens = [...itens];
         novosItens[itemExistente].quantidade = quantidade.toString();
         const itensComPrecosAtualizados = recalcularTodosPrecos(novosItens, produtos);
         setItens(itensComPrecosAtualizados);
       } else {
-        // Criar novo item
         const novoItem: ItemVendaForm = {
           produto_id: produtoId,
           quantidade: quantidade.toString(),
           preco_base: '',
-          preco_desconto: '',
+          preco_promocao: '',
           subtotal: '',
           quantidade_com_desconto: '0',
           quantidade_sem_desconto: '0'
@@ -155,18 +146,17 @@ export default function EditarVendaScreen() {
 
   const handleSubmit = async () => {
     const itensValidos = itens.filter(item => {
-      const produto = produtos.find(p => p.id.toString() === item.produto_id);
+      const produto = produtos.find(p => p.id === item.produto_id);
       return produto && item.quantidade.trim() && parseInt(item.quantidade) > 0 && item.subtotal.trim() && parseFloat(item.subtotal) > 0;
     });
 
-    if (itensValidos.length === 0 || !formData.cliente.trim() || !formData.metodo_pagamento) {
+    if (itensValidos.length === 0 || !formData.cliente_nome.trim() || !formData.metodo_pagamento) {
       alert('Por favor, preencha todos os campos obrigatórios');
       return;
     }
 
-    // Validar estoque disponível
     for (const item of itensValidos) {
-      const produto = produtos.find(p => p.id.toString() === item.produto_id);
+      const produto = produtos.find(p => p.id === item.produto_id);
       if (produto) {
         const estoqueDisponivel = produto.quantidade_inicial - produto.quantidade_vendida;
         const quantidadeSolicitada = parseInt(item.quantidade);
@@ -179,32 +169,28 @@ export default function EditarVendaScreen() {
 
     try {
       setSaving(true);
-      await VendaService.update(parseInt(id), {
-        cliente: formData.cliente.trim(),
+      await VendaService.update(user!.id, id, {
+        cliente_nome: formData.cliente_nome.trim(),
         data: venda?.data || new Date().toISOString(),
         status: formData.status,
         metodo_pagamento: formData.metodo_pagamento,
         itens: itensValidos.map(item => {
-          const produto = produtos.find(p => p.id.toString() === item.produto_id);
+          const produto = produtos.find(p => p.id === item.produto_id);
           return {
-            produto_id: parseInt(item.produto_id),
+            produto_id: item.produto_id,
             produto_tipo: produto?.tipo,
             produto_sabor: produto?.sabor,
             quantidade: parseInt(item.quantidade),
             preco_base: parseFloat(item.preco_base),
-            preco_desconto: item.preco_desconto ? parseFloat(item.preco_desconto) : undefined,
+            preco_promocao: item.preco_promocao ? parseFloat(item.preco_promocao) : undefined,
             subtotal: parseFloat(item.subtotal)
           };
         })
       });
 
-      // Atualizar no contexto
-      const vendaAtualizada = await VendaService.getById(parseInt(id));
+      const vendaAtualizada = await VendaService.getById(user!.id, id);
       if (vendaAtualizada) {
         dispatch({ type: 'UPDATE_VENDA', payload: vendaAtualizada });
-        
-        // Sincronizar cliente imediatamente (esperar conclusão)
-        await SyncService.syncClienteFromVenda(vendaAtualizada);
       }
 
       router.back();
@@ -267,7 +253,7 @@ export default function EditarVendaScreen() {
               <View style={styles.produtosListContainer}>
                 {produtos.map((produto) => {
                   const estoque = produto.quantidade_inicial - produto.quantidade_vendida;
-                  const quantidadeSelecionada = getProductQuantidade(produto.id.toString());
+                  const quantidadeSelecionada = getProductQuantidade(produto.id);
 
                   return (
                     <View
@@ -293,7 +279,7 @@ export default function EditarVendaScreen() {
                       {/* Seletor de Quantidade */}
                       <View style={styles.produtoListQuantityControl}>
                         <TouchableOpacity
-                          onPress={() => setProductQuantidade(produto.id.toString(), quantidadeSelecionada - 1)}
+                          onPress={() => setProductQuantidade(produto.id, quantidadeSelecionada - 1)}
                           style={[
                             styles.quantityButtonSmall,
                             quantidadeSelecionada <= 0 && styles.quantityButtonSmallDisabled
@@ -306,7 +292,7 @@ export default function EditarVendaScreen() {
                           value={quantidadeSelecionada.toString()}
                           onChangeText={(text) => {
                             const num = parseInt(text) || 0;
-                            setProductQuantidade(produto.id.toString(), num);
+                            setProductQuantidade(produto.id, num);
                           }}
                           keyboardType="numeric"
                           style={styles.quantityInputSmall}
@@ -315,7 +301,7 @@ export default function EditarVendaScreen() {
                           activeOutlineColor={COLORS.mediumBlue}
                         />
                         <TouchableOpacity
-                          onPress={() => setProductQuantidade(produto.id.toString(), quantidadeSelecionada + 1)}
+                          onPress={() => setProductQuantidade(produto.id, quantidadeSelecionada + 1)}
                           style={styles.quantityButtonSmall}
                           disabled={quantidadeSelecionada >= estoque}
                         >
@@ -349,8 +335,8 @@ export default function EditarVendaScreen() {
               {/* Cliente */}
               <View style={styles.inputContainer}>
                 <ClienteSearchInput
-                  value={formData.cliente}
-                  onChangeText={(text) => setFormData({ ...formData, cliente: text })}
+                  value={formData.cliente_nome}
+                  onChangeText={(text) => setFormData({ ...formData, cliente_nome: text })}
                 />
               </View>
 
@@ -448,9 +434,9 @@ export default function EditarVendaScreen() {
                 <View style={styles.summaryItems}>
                   {itens.map((item, index) => {
                     if (!item.produto_id || !item.quantidade || !item.preco_base) return null;
-                    const produto = produtos.find(p => p.id.toString() === item.produto_id);
+                    const produto = produtos.find(p => p.id === item.produto_id);
                     if (!produto) return null;
-                    
+
                     return (
                       <View key={index} style={styles.summaryItem}>
                         <View style={styles.summaryItemInfo}>
@@ -459,7 +445,7 @@ export default function EditarVendaScreen() {
                           </Text>
                           {item.quantidade_com_desconto && parseInt(item.quantidade_com_desconto) > 0 && (
                             <Text style={styles.summaryItemDetails}>
-                              {item.quantidade_com_desconto}x R$ {parseFloat(item.preco_desconto || '0').toFixed(2)}
+                              {item.quantidade_com_desconto}x R$ {parseFloat(item.preco_promocao || '0').toFixed(2)}
                               <Text style={styles.summaryPromoText}> • Promoção</Text>
                             </Text>
                           )}
@@ -489,7 +475,7 @@ export default function EditarVendaScreen() {
 
             {/* Botões de Ação */}
             <View style={styles.actionButtons}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.cancelButton}
                 onPress={() => router.back()}
                 disabled={saving}
@@ -497,7 +483,7 @@ export default function EditarVendaScreen() {
                 <Text style={styles.cancelButtonText}>Cancelar</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.submitButton, saving && styles.submitButtonDisabled]}
                 onPress={handleSubmit}
                 disabled={saving}
@@ -566,7 +552,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
-  
+
   // SEÇÕES
   section: {
     backgroundColor: COLORS.white,
@@ -605,7 +591,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textMedium,
   },
-  
+
   // INPUT
   inputContainer: {
     marginBottom: 16,
@@ -825,7 +811,7 @@ const styles = StyleSheet.create({
   summaryPromoText: {
     color: COLORS.pink,
     fontWeight: '700',
-    fontSize: 12, 
+    fontSize: 12,
   },
   summaryTotal: {
     flexDirection: 'row',

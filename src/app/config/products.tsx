@@ -1,5 +1,6 @@
 import Header from '@/components/Header';
 import ModernModal from '@/components/ModernModal';
+import SkeletonCard from '@/components/SkeletonCard';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScreenData } from '@/hooks/useScreenData';
@@ -9,7 +10,7 @@ import { useRouter } from 'expo-router';
 import { Trash2 } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { ActivityIndicator, Text } from 'react-native-paper';
+import { Text } from 'react-native-paper';
 
 export default function ProductsConfigScreen() {
   const { user } = useAuth();
@@ -48,23 +49,19 @@ export default function ProductsConfigScreen() {
     return product.type === 'outro' ? product.custom_type : product.type;
   };
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.mediumBlue} />
-        <Text style={styles.loadingText}>Carregando configurações...</Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <Header title="Configurar Produtos" subtitle="Gerencie os tipos de produto e seus preços" />
 
-      <ScrollView style={styles.content}>
+      {loading ? (
+        <ScrollView scrollEnabled={false} style={styles.content}>
+          <SkeletonCard lines={2} />
+          <SkeletonCard lines={2} />
+          <SkeletonCard lines={2} />
+        </ScrollView>
+      ) : (
+        <ScrollView style={styles.content}>
         <View style={styles.produtosList}>
-          <Text style={styles.sectionTitle}>Produtos Configurados</Text>
-
           {productConfigs.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyText}>Nenhum produto configurado ainda.</Text>
@@ -123,7 +120,8 @@ export default function ProductsConfigScreen() {
         >
           <Text style={styles.addButtonText}>+ Adicionar Configuração</Text>
         </TouchableOpacity>
-      </ScrollView>
+        </ScrollView>
+      )}
 
       <ModernModal
         visible={deleteModalVisible}
@@ -161,12 +159,6 @@ const styles = StyleSheet.create({
   },
   produtosList: {
     marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.textDark,
-    marginBottom: 16,
   },
   emptyState: {
     padding: 32,

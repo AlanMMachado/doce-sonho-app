@@ -1,4 +1,5 @@
 import Header from '@/components/Header';
+import SkeletonCard from '@/components/SkeletonCard';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProductConfigService } from '@/service/productConfigService';
@@ -15,6 +16,7 @@ export default function NewShipmentScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState('');
   const [productConfigs, setProductConfigs] = useState<ProductConfig[]>([]);
   const [products, setProducts] = useState<ShipmentProductForm[]>([]);
@@ -29,6 +31,8 @@ export default function NewShipmentScreen() {
       setProductConfigs(configs);
     } catch (error) {
       console.error('Erro ao carregar configurações:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -114,7 +118,11 @@ export default function NewShipmentScreen() {
               </View>
             </View>
 
-            {productConfigs.length === 0 ? (
+            {loading ? (
+              <View style={{ gap: 12 }}>
+                <SkeletonCard lines={3} />
+              </View>
+            ) : productConfigs.length === 0 ? (
               <View style={styles.emptyState}>
                 <Package size={40} color={COLORS.textLight} />
                 <Text style={styles.emptyText}>Nenhum produto configurado</Text>

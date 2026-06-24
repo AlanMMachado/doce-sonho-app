@@ -1,6 +1,7 @@
 import Header from '@/components/Header';
 import ModernModal from '@/components/ModernModal';
 import SaleCard from '@/components/SaleCard';
+import SkeletonCard from '@/components/SkeletonCard';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScreenData } from '@/hooks/useScreenData';
@@ -90,27 +91,28 @@ export default function CustomerDetailsScreen() {
     return Math.floor((today.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
   };
 
-  if (!customer) {
-    return (
-      <View style={styles.container}>
-        <Header title="Cliente" subtitle="Carregando..." />
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Cliente não encontrado</Text>
-        </View>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
       <Header
         title="Histórico de compras"
-        subtitle={`${customer.purchase_count} compra${customer.purchase_count !== 1 ? 's' : ''}`}
+        subtitle={loading ? 'Carregando...' : !customer ? 'Não encontrado' : `${customer.purchase_count} compra${customer.purchase_count !== 1 ? 's' : ''}`}
       />
 
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.mediumBlue} />
+        <ScrollView style={styles.content} scrollEnabled={false}>
+          <SkeletonCard lines={2} />
+          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
+            <SkeletonCard style={{ flex: 1 }} lines={2} />
+            <SkeletonCard style={{ flex: 1 }} lines={2} />
+          </View>
+          <SkeletonCard lines={2} />
+          <SkeletonCard lines={3} />
+          <SkeletonCard lines={3} />
+        </ScrollView>
+      ) : !customer ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Cliente não encontrado</Text>
         </View>
       ) : (
         <ScrollView

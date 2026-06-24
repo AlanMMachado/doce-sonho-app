@@ -1,6 +1,7 @@
 import Header from '@/components/Header';
 import ModernModal from '@/components/ModernModal';
 import SaleCard from '@/components/SaleCard';
+import SkeletonCard from '@/components/SkeletonCard';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScreenData } from '@/hooks/useScreenData';
@@ -76,19 +77,6 @@ export default function ShipmentDetailsScreen() {
     }
   };
 
-  if (!shipment) {
-    return (
-      <View style={styles.container}>
-        <Header
-          title="Detalhes da Remessa"
-          subtitle="Carregando..."
-        />
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Remessa não encontrada</Text>
-        </View>
-      </View>
-    );
-  }
 
   const formatDate = (dateString: string) => {
     if (!dateString || dateString === 'null' || dateString === '') {
@@ -139,22 +127,37 @@ export default function ShipmentDetailsScreen() {
     <View style={styles.container}>
       <Header
         title="Detalhes da Remessa"
-        subtitle={formatDate(shipment.date)}
+        subtitle={loading ? 'Carregando...' : !shipment ? 'Não encontrada' : formatDate(shipment.date)}
         actions={
-          <>
-            <TouchableOpacity style={styles.editCardButton} onPress={() => router.push(`/shipments/edit?id=${id}`)}>
-              <Edit size={20} color="#2563eb" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.deleteCardButton} onPress={() => setDeleteModalVisible(true)}>
-              <Trash2 size={20} color="#dc2626" />
-            </TouchableOpacity>
-          </>
+          !loading && shipment ? (
+            <>
+              <TouchableOpacity style={styles.editCardButton} onPress={() => router.push(`/shipments/edit?id=${id}`)}>
+                <Edit size={20} color="#2563eb" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.deleteCardButton} onPress={() => setDeleteModalVisible(true)}>
+                <Trash2 size={20} color="#dc2626" />
+              </TouchableOpacity>
+            </>
+          ) : undefined
         }
       />
 
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.mediumBlue} />
+        <ScrollView style={styles.content} scrollEnabled={false}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
+            <SkeletonCard style={{ width: '48%' }} lines={2} />
+            <SkeletonCard style={{ width: '48%' }} lines={2} />
+            <SkeletonCard style={{ width: '48%' }} lines={2} />
+            <SkeletonCard style={{ width: '48%' }} lines={2} />
+          </View>
+          <SkeletonCard lines={3} hasProgressBar />
+          <SkeletonCard lines={3} hasProgressBar />
+          <SkeletonCard lines={3} />
+          <SkeletonCard lines={3} />
+        </ScrollView>
+      ) : !shipment ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Remessa não encontrada</Text>
         </View>
       ) : (
         <ScrollView

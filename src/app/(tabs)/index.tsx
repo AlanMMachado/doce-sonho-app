@@ -1,6 +1,7 @@
 import ConfigMenuButton from '@/components/ConfigMenuButton';
 import Header from '@/components/Header';
 import SaleCard from '@/components/SaleCard';
+import SkeletonCard from '@/components/SkeletonCard';
 import { COLORS } from '@/constants/Colors';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,7 +15,7 @@ import { ptBR } from 'date-fns/locale';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { ActivityIndicator, Text } from 'react-native-paper';
+import { Text } from 'react-native-paper';
 
 export default function DashboardScreen() {
   const { user } = useAuth();
@@ -90,9 +91,14 @@ export default function DashboardScreen() {
         actions={<ConfigMenuButton />}
       />
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.mediumBlue} />
-        </View>
+        <ScrollView scrollEnabled={false} style={styles.content}>
+          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
+            <SkeletonCard style={{ flex: 1 }} lines={5} />
+            <SkeletonCard style={{ flex: 1 }} lines={5} />
+          </View>
+          <SkeletonCard lines={5} hasProgressBar />
+          <SkeletonCard lines={3} />
+        </ScrollView>
       ) : (
         <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
           <View style={styles.content}>

@@ -1,5 +1,6 @@
 import ConfigMenuButton from '@/components/ConfigMenuButton';
 import Header from '@/components/Header';
+import SkeletonCard from '@/components/SkeletonCard';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScreenData } from '@/hooks/useScreenData';
@@ -25,26 +26,25 @@ export default function ReportsScreen() {
 
   const { loading, refreshing, onRefresh } = useScreenData(loadReport, [period]);
 
-  if (!report) {
-    return (
-      <View style={styles.container}>
-        <Header title="Relatórios" subtitle="Análise de desempenho" actions={<ConfigMenuButton />} />
+  return (
+    <View style={styles.container}>
+      <Header title="Relatórios" subtitle="Análise de desempenho" actions={<ConfigMenuButton />} />
+      {loading ? (
+        <ScrollView scrollEnabled={false} style={styles.content}>
+          <SkeletonCard lines={1} />
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
+            <SkeletonCard style={{ width: '48%' }} lines={3} />
+            <SkeletonCard style={{ width: '48%' }} lines={3} />
+            <SkeletonCard style={{ width: '48%' }} lines={3} />
+          </View>
+          <SkeletonCard lines={3} />
+        </ScrollView>
+      ) : !report ? (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Erro ao carregar relatório</Text>
           <TouchableOpacity style={styles.retryButton} onPress={loadReport}>
             <Text style={styles.retryButtonText}>Tentar Novamente</Text>
           </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.container}>
-      <Header title="Relatórios" subtitle="Análise de desempenho" actions={<ConfigMenuButton />} />
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.mediumBlue} />
         </View>
       ) : (
         <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>

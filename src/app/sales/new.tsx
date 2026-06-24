@@ -1,5 +1,6 @@
 import CustomerSearchInput from '@/components/CustomerSearchInput';
 import Header from '@/components/Header';
+import SkeletonCard from '@/components/SkeletonCard';
 import { COLORS } from '@/constants/Colors';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -161,7 +162,7 @@ export default function NewSaleScreen() {
     }
   };
 
-  if (products.length === 0) {
+  if (!loading && products.length === 0) {
     return (
       <View style={styles.container}>
         <Header title="Nova Venda" subtitle="Registre uma venda rapidamente" />
@@ -189,9 +190,11 @@ export default function NewSaleScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.mediumBlue} />
-        </View>
+        <ScrollView scrollEnabled={false} style={styles.scrollView}>
+          <SkeletonCard lines={4} />
+          <SkeletonCard lines={3} />
+          <SkeletonCard lines={3} />
+        </ScrollView>
       ) : (
         <ScrollView keyboardShouldPersistTaps="handled" style={styles.scrollView}>
           <View style={styles.content}>

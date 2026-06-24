@@ -1,4 +1,5 @@
 import Header from '@/components/Header';
+import SkeletonCard from '@/components/SkeletonCard';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProductConfigService } from '@/service/productConfigService';
@@ -145,7 +146,11 @@ export default function EditShipmentScreen() {
     <View style={styles.container}>
       <Header title="Editar Remessa" subtitle="Atualize os produtos e dados" />
       {loading ? (
-        <View style={styles.loadingContainer}><ActivityIndicator size="large" color={COLORS.mediumBlue} /></View>
+        <ScrollView scrollEnabled={false} style={styles.scrollContent}>
+          <SkeletonCard lines={4} />
+          <SkeletonCard lines={3} />
+          <SkeletonCard lines={3} />
+        </ScrollView>
       ) : (
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">

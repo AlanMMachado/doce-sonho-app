@@ -1,6 +1,7 @@
 import ConfigMenuButton from '@/components/ConfigMenuButton';
 import Header from '@/components/Header';
 import ModernModal from '@/components/ModernModal';
+import SkeletonCard from '@/components/SkeletonCard';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScreenData } from '@/hooks/useScreenData';
@@ -12,7 +13,7 @@ import { useRouter } from 'expo-router';
 import { Edit, Power, Trash2 } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { ActivityIndicator, Text } from 'react-native-paper';
+import { Text } from 'react-native-paper';
 
 export default function ShipmentsScreen() {
   const { user } = useAuth();
@@ -94,9 +95,9 @@ export default function ShipmentsScreen() {
       />
 
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.mediumBlue} />
-        </View>
+        <ScrollView scrollEnabled={false} style={styles.content}>
+          <SkeletonCard lines={8} hasProgressBar />
+        </ScrollView>
       ) : (
         <ScrollView
           style={styles.content}

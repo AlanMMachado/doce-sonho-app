@@ -1,4 +1,5 @@
 import Header from '@/components/Header';
+import ModernModal from '@/components/ModernModal';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScreenData } from '@/hooks/useScreenData';
@@ -14,6 +15,8 @@ export default function ProductsConfigScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const [productConfigs, setProductConfigs] = useState<ProductConfig[]>([]);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<ProductConfig | null>(null);
 
   const loadProductConfigs = async () => {
     try {
@@ -27,27 +30,18 @@ export default function ProductsConfigScreen() {
 
   const { loading } = useScreenData(loadProductConfigs);
 
-  const handleDelete = async (product: ProductConfig) => {
-    Alert.alert(
-      'Confirmar exclusão',
-      `Deseja realmente excluir a configuração de ${product.type}${product.custom_type ? ` (${product.custom_type})` : ''}?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await ProductConfigService.delete(user!.id, product.id);
-              await loadProductConfigs();
-            } catch (error) {
-              console.error('Erro ao excluir configuração:', error);
-              Alert.alert('Erro', 'Não foi possível excluir a configuração.');
-            }
-          },
-        },
-      ]
-    );
+  const handleDelete = async () => {
+    if (!productToDelete) return;
+    try {
+      await ProductConfigService.delete(user!.id, productToDelete.id);
+      await loadProductConfigs();
+    } catch (error) {
+      console.error('Erro ao excluir configuração:', error);
+      Alert.alert('Erro', 'Não foi possível excluir a configuração.');
+    } finally {
+      setDeleteModalVisible(false);
+      setProductToDelete(null);
+    }
   };
 
   const getTypeDisplay = (product: ProductConfig) => {
@@ -101,7 +95,7 @@ export default function ProductsConfigScreen() {
                       <Text style={styles.editButtonText}>Editar</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      onPress={() => handleDelete(product)}
+                      onPress={() => { setProductToDelete(product); setDeleteModalVisible(true); }}
                       style={styles.deleteButton}
                     >
                       <Trash2 size={16} color={COLORS.error} />
@@ -130,6 +124,17 @@ export default function ProductsConfigScreen() {
           <Text style={styles.addButtonText}>+ Adicionar Configuração</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <ModernModal
+        visible={deleteModalVisible}
+        onClose={() => { setDeleteModalVisible(false); setProductToDelete(null); }}
+        title="Excluir Configuração"
+        primaryAction={{ label: 'Excluir', onPress: handleDelete, destructive: true }}
+        secondaryAction={{ label: 'Cancelar', onPress: () => { setDeleteModalVisible(false); setProductToDelete(null); } }}>
+        <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>
+          Deseja realmente excluir a configuração de {productToDelete?.type}{productToDelete?.custom_type ? ` (${productToDelete.custom_type})` : ''}?
+        </Text>
+      </ModernModal>
     </View>
   );
 }

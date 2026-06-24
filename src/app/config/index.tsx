@@ -1,13 +1,26 @@
 import Header from '@/components/Header';
+import ModernModal from '@/components/ModernModal';
 import { COLORS } from '@/constants/Colors';
+import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
-import { ChevronRight, Package, Settings } from 'lucide-react-native';
-import React from 'react';
+import { ChevronRight, LogOut, Package, User } from 'lucide-react-native';
+import React, { useState } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 
 export default function ConfigScreen() {
   const router = useRouter();
+  const { signOut } = useAuth();
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      router.replace('/login');
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    }
+  };
 
   const configItems = [
     {
@@ -20,7 +33,7 @@ export default function ConfigScreen() {
       title: 'Meu Perfil',
       description: 'Edite seus dados pessoais e meta diária',
       onPress: () => router.push('/config/profile'),
-      icon: Settings,
+      icon: User,
     },
   ];
 
@@ -53,7 +66,35 @@ export default function ConfigScreen() {
             );
           })}
         </View>
+
+        <TouchableOpacity
+          onPress={() => setLogoutModalVisible(true)}
+          style={[styles.configItem, styles.logoutItem]}
+          activeOpacity={0.7}
+        >
+          <View style={styles.configItemContent}>
+            <View style={[styles.configIconContainer, styles.logoutIconContainer]}>
+              <LogOut size={24} color={COLORS.error} />
+            </View>
+            <View style={styles.configText}>
+              <Text style={[styles.configTitle, styles.logoutTitle]}>Sair</Text>
+              <Text style={styles.configDescription}>Sair da sua conta</Text>
+            </View>
+          </View>
+          <ChevronRight size={20} color={COLORS.error} />
+        </TouchableOpacity>
       </ScrollView>
+
+      <ModernModal
+        visible={logoutModalVisible}
+        onClose={() => setLogoutModalVisible(false)}
+        title="Sair do app"
+        primaryAction={{ label: 'Sair', onPress: handleLogout, destructive: true }}
+        secondaryAction={{ label: 'Cancelar', onPress: () => setLogoutModalVisible(false) }}>
+        <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>
+          Tem certeza que deseja sair da sua conta?
+        </Text>
+      </ModernModal>
     </View>
   );
 }
@@ -106,5 +147,16 @@ const styles = StyleSheet.create({
   configDescription: {
     fontSize: 14,
     color: COLORS.textMedium,
+  },
+  logoutItem: {
+    marginTop: 24,
+    borderColor: COLORS.error,
+    borderWidth: 1.5,
+  },
+  logoutIconContainer: {
+    backgroundColor: `${COLORS.error}15`,
+  },
+  logoutTitle: {
+    color: COLORS.error,
   },
 });

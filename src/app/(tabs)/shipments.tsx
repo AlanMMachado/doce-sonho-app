@@ -1,6 +1,6 @@
 import ConfigMenuButton from '@/components/ConfigMenuButton';
-import ConfirmationModal from '@/components/ConfirmationModal';
 import Header from '@/components/Header';
+import ModernModal from '@/components/ModernModal';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScreenData } from '@/hooks/useScreenData';
@@ -203,14 +203,16 @@ export default function ShipmentsScreen() {
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
 
-      <ConfirmationModal
+      <ModernModal
         visible={deleteModalVisible}
+        onClose={() => { setDeleteModalVisible(false); setSelectedShipmentId(null); }}
         title="Excluir Remessa"
-        message="Tem certeza que deseja excluir esta remessa? Os produtos serão removidos, mas o histórico de vendas será preservado."
-        onConfirm={handleDelete}
-        onCancel={() => { setDeleteModalVisible(false); setSelectedShipmentId(null); }}
-        confirmText="Excluir"
-      />
+        primaryAction={{ label: 'Excluir', onPress: handleDelete, destructive: true }}
+        secondaryAction={{ label: 'Cancelar', onPress: () => { setDeleteModalVisible(false); setSelectedShipmentId(null); } }}>
+        <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>
+          Tem certeza que deseja excluir esta remessa? Os produtos serão removidos, mas o histórico de vendas será preservado.
+        </Text>
+      </ModernModal>
     </View>
   );
 }

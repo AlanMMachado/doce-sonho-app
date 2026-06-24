@@ -1,6 +1,6 @@
+import { COLORS } from '@/constants/Colors';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, TouchableOpacityProps } from 'react-native';
-import { COLORS } from '@/constants/Colors';
 
 interface ModernButtonProps extends TouchableOpacityProps {
   title: string;
@@ -11,7 +11,7 @@ interface ModernButtonProps extends TouchableOpacityProps {
 
 export default function ModernButton({ 
   title, 
-  variant = 'primary', 
+  variant = 'primary',
   loading = false,
   size = 'medium',
   style,

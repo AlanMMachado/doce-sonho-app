@@ -1,5 +1,5 @@
-import ConfirmationModal from '@/components/ConfirmationModal';
 import Header from '@/components/Header';
+import ModernModal from '@/components/ModernModal';
 import SaleCard from '@/components/SaleCard';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -317,26 +317,27 @@ export default function ShipmentDetailsScreen() {
       </ScrollView>
       )}
 
-      <ConfirmationModal
+      <ModernModal
         visible={deleteModalVisible}
+        onClose={() => setDeleteModalVisible(false)}
         title="Excluir Remessa"
-        message="Tem certeza que deseja excluir esta remessa? Os produtos serão removidos, mas o histórico de vendas será preservado."
-        onConfirm={handleDelete}
-        onCancel={() => setDeleteModalVisible(false)}
-        confirmText="Excluir"
-      />
+        primaryAction={{ label: 'Excluir', onPress: handleDelete, destructive: true }}
+        secondaryAction={{ label: 'Cancelar', onPress: () => setDeleteModalVisible(false) }}>
+        <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>
+          Tem certeza que deseja excluir esta remessa? Os produtos serão removidos, mas o histórico de vendas será preservado.
+        </Text>
+      </ModernModal>
 
-      <ConfirmationModal
+      <ModernModal
         visible={deleteSaleModalVisible}
+        onClose={() => { setDeleteSaleModalVisible(false); setSaleToDelete(null); }}
         title="Excluir Venda"
-        message={`Tem certeza que deseja excluir a venda de ${saleToDelete?.customer_name}? Esta ação não pode ser desfeita.`}
-        onConfirm={handleDeleteSale}
-        onCancel={() => {
-          setDeleteSaleModalVisible(false);
-          setSaleToDelete(null);
-        }}
-        confirmText="Excluir"
-      />
+        primaryAction={{ label: 'Excluir', onPress: handleDeleteSale, destructive: true }}
+        secondaryAction={{ label: 'Cancelar', onPress: () => { setDeleteSaleModalVisible(false); setSaleToDelete(null); } }}>
+        <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>
+          Tem certeza que deseja excluir a venda de {saleToDelete?.customer_name}? Esta ação não pode ser desfeita.
+        </Text>
+      </ModernModal>
     </View>
   );
 }

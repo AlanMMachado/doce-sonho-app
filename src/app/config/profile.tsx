@@ -1,6 +1,7 @@
 import Header from '@/components/Header';
 import ModernButton from '@/components/ModernButton';
 import ModernInput from '@/components/ModernInput';
+import ModernModal from '@/components/ModernModal';
 import { COLORS } from '@/constants/Colors';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,7 +9,7 @@ import { dateToISO, formatDate } from '@/lib/utils/formatters';
 import { isValidDate } from '@/lib/utils/validators';
 import { ProfileService } from '@/service/profileService';
 import { useRouter } from 'expo-router';
-import { Calendar, DollarSign, User } from 'lucide-react-native';
+import { Calendar, Target, User } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -17,6 +18,7 @@ export default function ProfileScreen() {
   const { state, reloadProfile } = useApp();
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
     full_name: '',
@@ -60,8 +62,7 @@ export default function ProfileScreen() {
         daily_goal: goalNum,
       });
       await reloadProfile();
-      Alert.alert('Sucesso', 'Perfil atualizado com sucesso!');
-      router.back();
+      setSuccessModalVisible(true);
     } catch (error) {
       Alert.alert('Erro', 'Não foi possível salvar o perfil.');
     } finally {
@@ -127,7 +128,7 @@ export default function ProfileScreen() {
                 value={form.daily_goal}
                 onChangeText={(t) => { setForm(p => ({ ...p, daily_goal: t })); clearError('daily_goal'); }}
                 keyboardType="numeric"
-                icon={<DollarSign width={20} height={20} color={COLORS.mediumBlue} />}
+                icon={<Target width={20} height={20} color={COLORS.mediumBlue} />}
                 error={!!errors.daily_goal}
               />
             </View>
@@ -147,6 +148,16 @@ export default function ProfileScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ModernModal
+        visible={successModalVisible}
+        onClose={() => { setSuccessModalVisible(false); router.back(); }}
+        title="Perfil Atualizado"
+        primaryAction={{ label: 'Ok', onPress: () => { setSuccessModalVisible(false); router.back(); } }}>
+        <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>
+          Suas informações foram atualizadas com sucesso!
+        </Text>
+      </ModernModal>
     </View>
   );
 }

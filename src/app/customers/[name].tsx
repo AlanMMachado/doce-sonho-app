@@ -1,5 +1,5 @@
-import ConfirmationModal from '@/components/ConfirmationModal';
 import Header from '@/components/Header';
+import ModernModal from '@/components/ModernModal';
 import SaleCard from '@/components/SaleCard';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -203,18 +203,16 @@ export default function CustomerDetailsScreen() {
         </ScrollView>
       )}
 
-      {/* Modal de Confirmação de Pagamento */}
-      <ConfirmationModal
+      <ModernModal
         visible={paymentModalVisible}
+        onClose={() => { setPaymentModalVisible(false); setSaleToMark(null); }}
         title="Confirmar Pagamento"
-        message={`Marcar a venda de R$ ${(saleToMark?.total_price || 0).toFixed(2)} como paga?`}
-        onConfirm={() => saleToMark && markAsPaid(saleToMark)}
-        onCancel={() => {
-          setPaymentModalVisible(false);
-          setSaleToMark(null);
-        }}
-        confirmText="Confirmar"
-      />
+        primaryAction={{ label: 'Confirmar', onPress: () => saleToMark && markAsPaid(saleToMark) }}
+        secondaryAction={{ label: 'Cancelar', onPress: () => { setPaymentModalVisible(false); setSaleToMark(null); } }}>
+        <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>
+          Marcar a venda de R$ {(saleToMark?.total_price || 0).toFixed(2)} como paga?
+        </Text>
+      </ModernModal>
     </View>
   );
 }

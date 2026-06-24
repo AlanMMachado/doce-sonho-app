@@ -1,48 +1,48 @@
-import { PerfilService } from '@/service/perfilService';
-import { Perfil } from '@/types/Perfil';
-import { Remessa } from '@/types/Remessa';
-import { Venda } from '@/types/Venda';
+import { ProfileService } from '@/service/profileService';
+import { Profile } from '@/types/Profile';
+import { Sale } from '@/types/Sale';
+import { Shipment } from '@/types/Shipment';
 import React, { createContext, ReactNode, useContext, useEffect, useReducer } from 'react';
 import { useAuth } from './AuthContext';
 
 interface AppState {
-  remessaAtiva: Remessa | null;
-  vendas: Venda[];
-  perfil: Perfil | null;
+  activeShipment: Shipment | null;
+  sales: Sale[];
+  profile: Profile | null;
   loading: boolean;
 }
 
 type AppAction =
-  | { type: 'SET_REMESSA_ATIVA'; payload: Remessa | null }
-  | { type: 'ADD_VENDA'; payload: Venda }
-  | { type: 'UPDATE_VENDA'; payload: Venda }
-  | { type: 'SET_VENDAS'; payload: Venda[] }
-  | { type: 'SET_PERFIL'; payload: Perfil | null }
+  | { type: 'SET_ACTIVE_SHIPMENT'; payload: Shipment | null }
+  | { type: 'ADD_SALE'; payload: Sale }
+  | { type: 'UPDATE_SALE'; payload: Sale }
+  | { type: 'SET_SALES'; payload: Sale[] }
+  | { type: 'SET_PROFILE'; payload: Profile | null }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'LOAD_DATA'; payload: Partial<AppState> };
 
 const initialState: AppState = {
-  remessaAtiva: null,
-  vendas: [],
-  perfil: null,
+  activeShipment: null,
+  sales: [],
+  profile: null,
   loading: false,
 };
 
 function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
-    case 'SET_REMESSA_ATIVA':
-      return { ...state, remessaAtiva: action.payload };
-    case 'ADD_VENDA':
-      return { ...state, vendas: [action.payload, ...state.vendas] };
-    case 'UPDATE_VENDA':
+    case 'SET_ACTIVE_SHIPMENT':
+      return { ...state, activeShipment: action.payload };
+    case 'ADD_SALE':
+      return { ...state, sales: [action.payload, ...state.sales] };
+    case 'UPDATE_SALE':
       return {
         ...state,
-        vendas: state.vendas.map(v => v.id === action.payload.id ? action.payload : v),
+        sales: state.sales.map(s => s.id === action.payload.id ? action.payload : s),
       };
-    case 'SET_VENDAS':
-      return { ...state, vendas: action.payload };
-    case 'SET_PERFIL':
-      return { ...state, perfil: action.payload };
+    case 'SET_SALES':
+      return { ...state, sales: action.payload };
+    case 'SET_PROFILE':
+      return { ...state, profile: action.payload };
     case 'SET_LOADING':
       return { ...state, loading: action.payload };
     case 'LOAD_DATA':
@@ -55,7 +55,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
 interface AppContextType {
   state: AppState;
   dispatch: React.Dispatch<AppAction>;
-  recarregarPerfil: () => Promise<void>;
+  reloadProfile: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -64,11 +64,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [state, dispatch] = useReducer(appReducer, initialState);
 
-  const recarregarPerfil = async () => {
+  const reloadProfile = async () => {
     if (!user) return;
     try {
-      const perfil = await PerfilService.get(user.id);
-      dispatch({ type: 'SET_PERFIL', payload: perfil });
+      const profile = await ProfileService.get(user.id);
+      dispatch({ type: 'SET_PROFILE', payload: profile });
     } catch (error) {
       console.error('Erro ao recarregar perfil:', error);
       throw error;
@@ -77,11 +77,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!user) return;
-    recarregarPerfil();
+    reloadProfile();
   }, [user?.id]);
 
   return (
-    <AppContext.Provider value={{ state, dispatch, recarregarPerfil }}>
+    <AppContext.Provider value={{ state, dispatch, reloadProfile }}>
       {children}
     </AppContext.Provider>
   );

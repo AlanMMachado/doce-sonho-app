@@ -13,13 +13,13 @@ export default function ConfigScreen() {
     {
       title: 'Produtos',
       description: 'Configure tipos de produto, preços base e promoções',
-      onPress: () => router.push('/config/produtos'),
+      onPress: () => router.push('/config/products'),
       icon: Package,
     },
     {
       title: 'Meu Perfil',
       description: 'Edite seus dados pessoais e meta diária',
-      onPress: () => router.push('/config/perfil'),
+      onPress: () => router.push('/config/profile'),
       icon: Settings,
     },
   ];

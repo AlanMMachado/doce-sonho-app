@@ -1,77 +1,62 @@
-import React from 'react';
-import { Modal, StyleSheet, Text, View } from 'react-native';
-import { AlertTriangle, CheckCircle, Info, XCircle } from 'lucide-react-native';
 import { COLORS } from '@/constants/Colors';
-import ModernButton from './ModernButton';
+import React from 'react';
+import { Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Text } from 'react-native-paper';
+
+interface Action {
+  label: string;
+  onPress: () => void | Promise<void>;
+  destructive?: boolean;
+  loading?: boolean;
+}
 
 interface ModernModalProps {
   visible: boolean;
   onClose: () => void;
   title: string;
-  message: string;
-  type?: 'success' | 'error' | 'warning' | 'info';
-  primaryButtonText?: string;
-  secondaryButtonText?: string;
-  onSecondaryPress?: () => void;
+  icon?: React.ReactNode;
+  primaryAction?: Action;
+  secondaryAction?: Action;
+  children?: React.ReactNode;
 }
-
-const TYPE_CONFIG = {
-  success: {
-    color: COLORS.success,
-    Icon: CheckCircle,
-  },
-  error: {
-    color: COLORS.error,
-    Icon: XCircle,
-  },
-  warning: {
-    color: COLORS.warning,
-    Icon: AlertTriangle,
-  },
-  info: {
-    color: COLORS.mediumBlue,
-    Icon: Info,
-  },
-};
 
 export default function ModernModal({
   visible,
   onClose,
   title,
-  message,
-  type = 'info',
-  primaryButtonText = 'Entendi',
-  secondaryButtonText,
-  onSecondaryPress,
+  icon,
+  primaryAction,
+  secondaryAction,
+  children,
 }: ModernModalProps) {
-  const config = TYPE_CONFIG[type];
-
   return (
-    <Modal visible={visible} transparent animationType="fade">
-      <View style={styles.modalOverlay}>
-        <View style={[styles.modalContent, { borderTopColor: config.color }]}>
-          <View style={[styles.iconContainer, { backgroundColor: config.color + '18' }]}>
-            <config.Icon width={32} height={32} color={config.color} />
-          </View>
-
-          <Text style={[styles.modalTitle, { color: config.color }]}>{title}</Text>
-          <Text style={styles.modalMessage}>{message}</Text>
-
-          <View style={styles.separator} />
-
-          <View style={styles.buttonContainer}>
-            <ModernButton
-              title={primaryButtonText}
-              onPress={onClose}
-              style={styles.primaryButton}
-            />
-            {secondaryButtonText && onSecondaryPress && (
-              <ModernButton
-                title={secondaryButtonText}
-                variant="secondary"
-                onPress={onSecondaryPress}
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.overlay}>
+        <View style={styles.backdrop} onTouchEnd={onClose} />
+        <View style={styles.sheet}>
+          {icon && <View style={styles.iconContainer}>{icon}</View>}
+          <Text style={styles.title}>{title}</Text>
+          {children && <View style={styles.body}>{children}</View>}
+          <View style={styles.actions}>
+            {primaryAction && (
+              <TouchableOpacity
+                style={[styles.button, primaryAction.destructive ? styles.destructiveButton : styles.primaryButton]}
+                onPress={primaryAction.onPress}
+                disabled={primaryAction.loading}
+                activeOpacity={0.8}>
+                {primaryAction.loading
+                  ? <ActivityIndicator color={COLORS.white} size={18} />
+                  : <Text style={styles.primaryButtonText}>{primaryAction.label}</Text>}
+              </TouchableOpacity>
+            )}
+            {secondaryAction && (
+              <TouchableOpacity
                 style={styles.secondaryButton}
-              />
+                onPress={secondaryAction.onPress}
+                disabled={secondaryAction.loading}
+                activeOpacity={0.8}>
+                <Text style={styles.secondaryButtonText}>{secondaryAction.label}</Text>
+              </TouchableOpacity>
             )}
           </View>
         </View>
@@ -81,63 +66,30 @@ export default function ModernModal({
 }
 
 const styles = StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(14, 30, 63, 0.6)',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
-  modalContent: {
+  overlay: { flex: 1, justifyContent: 'flex-end' },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
+  sheet: {
     backgroundColor: COLORS.white,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    borderTopWidth: 4,
     paddingHorizontal: 24,
     paddingTop: 28,
     paddingBottom: 36,
     alignItems: 'center',
-    shadowColor: COLORS.navy,
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
     elevation: 10,
-    width: '100%',
   },
-  iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  modalMessage: {
-    fontSize: 14,
-    color: COLORS.gray,
-    textAlign: 'center',
-    marginBottom: 10,
-    lineHeight: 22,
-  },
-  separator: {
-    width: '100%',
-    height: 1,
-    backgroundColor: COLORS.lightGray,
-    marginBottom: 20,
-  },
-  buttonContainer: {
-    width: '100%',
-    gap: 8,
-  },
-  primaryButton: {
-    width: '100%',
-  },
-  secondaryButton: {
-    width: '100%',
-  },
+  iconContainer: { marginBottom: 16 },
+  title: { fontSize: 20, fontWeight: '700', color: COLORS.textDark, textAlign: 'center', marginBottom: 12 },
+  body: { width: '100%', marginBottom: 20 },
+  actions: { width: '100%', gap: 10 },
+  button: { width: '100%', borderRadius: 12, paddingVertical: 15, alignItems: 'center' },
+  primaryButton: { backgroundColor: COLORS.mediumBlue },
+  destructiveButton: { backgroundColor: COLORS.error },
+  primaryButtonText: { fontSize: 15, fontWeight: '700', color: COLORS.white },
+  secondaryButton: { width: '100%', borderRadius: 12, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: COLORS.borderGray },
+  secondaryButtonText: { fontSize: 15, fontWeight: '700', color: COLORS.textMedium },
 });

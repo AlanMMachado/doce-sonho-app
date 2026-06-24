@@ -5,15 +5,15 @@ import ModernModal from '@/components/ModernModal';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { dataParaISO, formatarData } from '@/lib/utils/formatters';
+import { dateToISO, formatDate } from '@/lib/utils/formatters';
 import { isValidDate } from '@/lib/utils/validators';
-import { PerfilService } from '@/service/perfilService';
+import { ProfileService } from '@/service/profileService';
 import { useRouter } from 'expo-router';
 import { Calendar, Eye, EyeOff, Lock, Mail, Target, User } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-function calcularForcaSenha(pwd: string) {
+function calculatePasswordStrength(pwd: string) {
   let score = 0;
   const checks = {
     length: pwd.length >= 6,
@@ -74,11 +74,11 @@ export default function RegisterScreen() {
         if (sessErr) throw sessErr;
         if (!session) throw new Error('Usuário não está autenticado ainda.');
 
-        await PerfilService.criar(newUser.id, {
-          nome_completo: nome.trim(),
+        await ProfileService.create(newUser.id, {
+          full_name: nome.trim(),
           email: email.trim(),
-          data_nascimento: dataParaISO(dataNascimento),
-          meta_diaria: parseFloat(metaDiaria),
+          birth_date: dateToISO(dataNascimento),
+          daily_goal: parseFloat(metaDiaria),
         });
       }
 
@@ -94,10 +94,10 @@ export default function RegisterScreen() {
 
   const handleModalDismiss = () => {
     setModalMessage(null);
-    if (modalType === 'success') router.replace('/(tabs)/dashboard');
+    if (modalType === 'success') router.replace('/(tabs)/index');
   };
 
-  const forca = useMemo(() => password.length > 0 ? calcularForcaSenha(password) : null, [password]);
+  const forca = useMemo(() => password.length > 0 ? calculatePasswordStrength(password) : null, [password]);
 
   const getForcaInfo = () => {
     if (!forca) return null;
@@ -185,7 +185,7 @@ export default function RegisterScreen() {
               <ModernInput
                 placeholder="DD/MM/AAAA"
                 value={dataNascimento}
-                onChangeText={(t) => { setDataNascimento(formatarData(t)); clearError('dataNascimento'); }}
+                onChangeText={(t) => { setDataNascimento(formatDate(t)); clearError('dataNascimento'); }}
                 keyboardType="numeric"
                 icon={<Calendar width={20} height={20} color={COLORS.mediumBlue} />}
                 error={!!errors.dataNascimento}
@@ -298,12 +298,11 @@ export default function RegisterScreen() {
 
       <ModernModal
         visible={!!modalMessage}
-        type={modalType}
-        title={modalType === 'success' ? 'Sucesso!' : 'Atenção'}
-        message={modalMessage ?? ''}
-        primaryButtonText={modalType === 'success' ? 'Ir para o app' : 'Tentar novamente'}
         onClose={handleModalDismiss}
-      />
+        title={modalType === 'success' ? 'Sucesso!' : 'Atenção'}
+        primaryAction={{ label: modalType === 'success' ? 'Ir para o app' : 'Tentar novamente', onPress: handleModalDismiss }}>
+        <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>{modalMessage ?? ''}</Text>
+      </ModernModal>
     </View>
   );
 }

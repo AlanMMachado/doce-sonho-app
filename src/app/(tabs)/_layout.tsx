@@ -59,7 +59,7 @@ export default function TabLayout() {
       }}>
 
       <Tabs.Screen
-        name="dashboard"
+        name="index"
         options={{
           title: 'Dashboard',
           headerShown: false,
@@ -69,7 +69,7 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="remessas"
+        name="shipments"
         options={{
           title: 'Remessas',
           headerShown: false,
@@ -79,7 +79,7 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="clientes"
+        name="customers"
         options={{
           title: 'Clientes',
           headerShown: false,
@@ -89,7 +89,7 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="relatorios"
+        name="reports"
         options={{
           title: 'Relatórios',
           headerShown: false,

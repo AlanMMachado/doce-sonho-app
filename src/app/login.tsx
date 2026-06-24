@@ -135,10 +135,9 @@ export default function LoginScreen() {
         visible={!!serverError}
         onClose={() => setServerError(null)}
         title="Erro ao entrar"
-        message={serverError ?? ''}
-        type="error"
-        primaryButtonText="Tentar novamente"
-      />
+        primaryAction={{ label: 'Tentar novamente', onPress: () => setServerError(null) }}>
+        <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>{serverError ?? ''}</Text>
+      </ModernModal>
     </View>
   );
 }

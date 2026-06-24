@@ -33,7 +33,9 @@ const paperTheme = {
 };
 
 function RootNavigator() {
-  const { session } = useAuth();
+  const { session, loading } = useAuth();
+
+  if (loading) return null;
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
@@ -42,19 +44,11 @@ function RootNavigator() {
         <Stack.Screen name="register" />
       </Stack.Protected>
       <Stack.Protected guard={!!session}>
-        <Stack.Screen name="index" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="vendas/nova" />
-        <Stack.Screen name="vendas/editar" />
-        <Stack.Screen name="remessas/nova" />
-        <Stack.Screen name="remessas/editar" />
-        <Stack.Screen name="remessas/[id]" />
-        <Stack.Screen name="config/index" />
-        <Stack.Screen name="config/produtos" />
-        <Stack.Screen name="config/perfil" />
-        <Stack.Screen name="config/novo-produto" />
-        <Stack.Screen name="config/editar-produto" />
-        <Stack.Screen name="clientes/[nome]" />
+        <Stack.Screen name="sales" />
+        <Stack.Screen name="shipments" />
+        <Stack.Screen name="config" />
+        <Stack.Screen name="customers" />
       </Stack.Protected>
     </Stack>
   );

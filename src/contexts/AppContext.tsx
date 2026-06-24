@@ -55,7 +55,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
 interface AppContextType {
   state: AppState;
   dispatch: React.Dispatch<AppAction>;
-  reloadProfile: () => Promise<void>;
+  reloadProfile: () => Promise<Profile | null>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -65,10 +65,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
   const reloadProfile = async () => {
-    if (!user) return;
+    if (!user) return null;
     try {
       const profile = await ProfileService.get(user.id);
       dispatch({ type: 'SET_PROFILE', payload: profile });
+      return profile;
     } catch (error) {
       console.error('Erro ao recarregar perfil:', error);
       throw error;

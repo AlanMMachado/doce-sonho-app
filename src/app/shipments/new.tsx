@@ -1,4 +1,5 @@
 import Header from '@/components/Header';
+import ModernModal from '@/components/ModernModal';
 import SkeletonCard from '@/components/SkeletonCard';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,6 +19,8 @@ export default function NewShipmentScreen() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [serverError, setServerError] = useState<string | null>(null);
   const [productConfigs, setProductConfigs] = useState<ProductConfig[]>([]);
   const [products, setProducts] = useState<ShipmentProductForm[]>([]);
 
@@ -61,15 +64,22 @@ export default function NewShipmentScreen() {
   };
 
   const handleSubmit = async () => {
+    const newErrors: Record<string, string> = {};
+    products.forEach((p, i) => {
+      if (!p.flavor.trim()) newErrors[`flavor_${i}`] = 'required';
+      if (!p.initial_quantity.trim() || parseInt(p.initial_quantity) <= 0) newErrors[`qty_${i}`] = 'required';
+    });
+
+    if (Object.keys(newErrors).length > 0 || products.length === 0) {
+      setErrors(newErrors);
+      return;
+    }
+    setErrors({});
+
     const validProducts = products.filter(p => {
       const qtyValid = p.initial_quantity.trim() && !isNaN(parseInt(p.initial_quantity)) && parseInt(p.initial_quantity) > 0;
       return p.flavor.trim() && qtyValid;
     });
-
-    if (validProducts.length === 0) {
-      alert('Adicione pelo menos um produto válido com sabor e quantidade.');
-      return;
-    }
 
     try {
       setSaving(true);
@@ -94,7 +104,7 @@ export default function NewShipmentScreen() {
       router.back();
     } catch (error) {
       console.error('Erro ao salvar remessa:', error);
-      alert('Erro ao salvar remessa. Tente novamente.');
+      setServerError('Erro ao salvar remessa. Tente novamente.');
     } finally {
       setSaving(false);
     }
@@ -180,9 +190,12 @@ export default function NewShipmentScreen() {
                   <View style={styles.productInputs}>
                     <View style={styles.inputFlex}>
                       <Text style={styles.label}>Sabor *</Text>
-                      <TextInput value={product.flavor} onChangeText={(t) => updateProduct(index, 'flavor', t)}
+                      <TextInput value={product.flavor} onChangeText={(t) => {
+                        updateProduct(index, 'flavor', t);
+                        if (errors[`flavor_${index}`]) setErrors(prev => { const n = {...prev}; delete n[`flavor_${index}`]; return n; });
+                      }}
                         style={styles.input} mode="outlined" placeholder="Ex: Morango" dense
-                        outlineColor={COLORS.borderGray} activeOutlineColor={COLORS.mediumBlue} />
+                        outlineColor={errors[`flavor_${index}`] ? COLORS.error : COLORS.borderGray} activeOutlineColor={errors[`flavor_${index}`] ? COLORS.error : COLORS.mediumBlue} />
                     </View>
                     <View style={styles.inputQty}>
                       <Text style={styles.label}>Qtd *</Text>
@@ -193,9 +206,12 @@ export default function NewShipmentScreen() {
                           <Minus size={16} color={(!product.initial_quantity || parseInt(product.initial_quantity) <= 0) ? COLORS.textLight : COLORS.textDark} />
                         </TouchableOpacity>
                         <TextInput value={product.initial_quantity}
-                          onChangeText={(t) => updateProduct(index, 'initial_quantity', t.replace(/[^0-9]/g, ''))}
+                          onChangeText={(t) => {
+                            updateProduct(index, 'initial_quantity', t.replace(/[^0-9]/g, ''));
+                            if (errors[`qty_${index}`]) setErrors(prev => { const n = {...prev}; delete n[`qty_${index}`]; return n; });
+                          }}
                           keyboardType="numeric" style={styles.quantityInput} mode="outlined" dense
-                          outlineColor={COLORS.borderGray} activeOutlineColor={COLORS.mediumBlue} />
+                          outlineColor={errors[`qty_${index}`] ? COLORS.error : COLORS.borderGray} activeOutlineColor={errors[`qty_${index}`] ? COLORS.error : COLORS.mediumBlue} />
                         <TouchableOpacity onPress={() => { const c = parseInt(product.initial_quantity) || 0; updateProduct(index, 'initial_quantity', (c + 1).toString()); }} style={styles.qtyButton}>
                           <Plus size={16} color={COLORS.textDark} />
                         </TouchableOpacity>
@@ -233,6 +249,14 @@ export default function NewShipmentScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ModernModal
+        visible={!!serverError}
+        onClose={() => setServerError(null)}
+        title="Erro ao criar remessa"
+        primaryAction={{ label: 'Tentar novamente', onPress: () => setServerError(null) }}>
+        <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>{serverError ?? ''}</Text>
+      </ModernModal>
     </View>
   );
 }

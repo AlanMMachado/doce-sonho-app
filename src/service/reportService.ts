@@ -34,8 +34,8 @@ export const ReportService = {
       .from('sales')
       .select('total_price, status, items:sale_items(quantity, subtotal, product_type, product_flavor, product_id, product:products(production_cost))')
       .eq('user_id', userId)
-      .gte('date', startDate)
-      .lte('date', endDate);
+      .gte('date', `${startDate}T00:00:00Z`)
+      .lte('date', `${endDate}T23:59:59Z`);
 
     if (error) throw error;
 

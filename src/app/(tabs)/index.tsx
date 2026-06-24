@@ -51,7 +51,7 @@ export default function DashboardScreen() {
       }
       setProducts(productsMap);
 
-      await reloadProfile();
+      const freshProfile = await reloadProfile();
 
       const report = await ReportService.generate(user!.id, {
         period: 'day',
@@ -59,7 +59,7 @@ export default function DashboardScreen() {
         endDate: today,
       });
 
-      const goal = state.profile?.daily_goal ?? 200;
+      const goal = freshProfile?.daily_goal ?? 200;
       setDailyGoal(goal);
       const totalGeneral = report.totalSold + report.totalPending;
 

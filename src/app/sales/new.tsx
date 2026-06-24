@@ -1,5 +1,6 @@
 import CustomerSearchInput from '@/components/CustomerSearchInput';
 import Header from '@/components/Header';
+import ModernModal from '@/components/ModernModal';
 import SkeletonCard from '@/components/SkeletonCard';
 import { COLORS } from '@/constants/Colors';
 import { useApp } from '@/contexts/AppContext';
@@ -21,6 +22,8 @@ export default function NewSaleScreen() {
   const router = useRouter();
   const { dispatch } = useApp();
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [serverError, setServerError] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [items, setItems] = useState<SaleItemForm[]>([]);
   const [formData, setFormData] = useState({
@@ -64,6 +67,7 @@ export default function NewSaleScreen() {
       const newItems = items.filter(item => item.product_id !== productId);
       setItems(newItems);
     } else {
+      if (errors.products) setErrors(prev => { const n = {...prev}; delete n.products; return n; });
       const existingItem = items.findIndex(item => item.product_id === productId);
 
       if (existingItem >= 0) {
@@ -101,32 +105,21 @@ export default function NewSaleScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.customer_name.trim()) {
-      alert('Por favor, informe o nome do cliente');
-      return;
-    }
+    const newErrors: Record<string, string> = {};
+    if (!formData.customer_name.trim()) newErrors.customer_name = 'required';
 
     const validItems = items.filter(item => {
       const product = products.find(p => p.id === item.product_id);
       return product && item.quantity.trim() && parseInt(item.quantity) > 0 && item.subtotal.trim() && parseFloat(item.subtotal) >= 0;
     });
 
-    if (validItems.length === 0) {
-      alert('Adicione pelo menos um produto válido');
+    if (validItems.length === 0) newErrors.products = 'required';
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
-
-    for (const item of validItems) {
-      const product = products.find(p => p.id === item.product_id);
-      if (product) {
-        const availableStock = product.initial_quantity - product.sold_quantity;
-        const requestedQuantity = parseInt(item.quantity);
-        if (requestedQuantity > availableStock) {
-          alert(`Estoque insuficiente para ${product.type} ${product.flavor}. Disponível: ${availableStock} unidades`);
-          return;
-        }
-      }
-    }
+    setErrors({});
 
     try {
       setSaving(true);
@@ -156,7 +149,7 @@ export default function NewSaleScreen() {
       router.back();
     } catch (error) {
       console.error('Erro ao salvar venda:', error);
-      alert('Erro ao salvar venda. Tente novamente.');
+      setServerError('Erro ao salvar venda. Tente novamente.');
     } finally {
       setSaving(false);
     }
@@ -259,8 +252,8 @@ export default function NewSaleScreen() {
                             keyboardType="numeric"
                             style={styles.quantityInputSmall}
                             mode="outlined"
-                            outlineColor={COLORS.borderGray}
-                            activeOutlineColor={COLORS.mediumBlue}
+                            outlineColor={errors.products ? COLORS.error : COLORS.borderGray}
+                            activeOutlineColor={errors.products ? COLORS.error : COLORS.mediumBlue}
                           />
                           <TouchableOpacity
                             onPress={() => setProductQuantity(product.id, selectedQuantity + 1)}
@@ -298,7 +291,11 @@ export default function NewSaleScreen() {
               <View style={styles.inputContainer}>
                 <CustomerSearchInput
                   value={formData.customer_name}
-                  onChangeText={(text) => setFormData({ ...formData, customer_name: text })}
+                  error={!!errors.customer_name}
+                  onChangeText={(text) => {
+                    setFormData({ ...formData, customer_name: text });
+                    if (errors.customer_name) setErrors(prev => { const n = {...prev}; delete n.customer_name; return n; });
+                  }}
                 />
               </View>
 
@@ -461,6 +458,14 @@ export default function NewSaleScreen() {
         </ScrollView>
       )}
       </KeyboardAvoidingView>
+
+      <ModernModal
+        visible={!!serverError}
+        onClose={() => setServerError(null)}
+        title="Erro ao salvar venda"
+        primaryAction={{ label: 'Tentar novamente', onPress: () => setServerError(null) }}>
+        <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>{serverError ?? ''}</Text>
+      </ModernModal>
     </View>
   );
 }
@@ -814,5 +819,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: COLORS.white,
+  },
+  errorText: {
+    fontSize: 12,
+    color: COLORS.error,
+    marginTop: 8,
   },
 });

@@ -12,6 +12,7 @@ interface CustomerSearchInputProps {
   onDropdownStateChange?: (isOpen: boolean) => void;
   placeholder?: string;
   label?: string;
+  error?: boolean;
 }
 
 export default function CustomerSearchInput({
@@ -20,7 +21,8 @@ export default function CustomerSearchInput({
   onCustomerSelect,
   onDropdownStateChange,
   placeholder = "Nome do cliente",
-  label = "Cliente *"
+  label = "Cliente *",
+  error = false
 }: CustomerSearchInputProps) {
   const { user } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -125,8 +127,8 @@ export default function CustomerSearchInput({
         mode="outlined"
         label={label}
         placeholder={placeholder}
-        outlineColor="#d1d5db"
-        activeOutlineColor="#2563eb"
+        outlineColor={error ? "#dc2626" : "#d1d5db"}
+        activeOutlineColor={error ? "#dc2626" : "#2563eb"}
         right={
           selectedCustomer ? <TextInput.Icon icon="check-circle" color="#059669" /> :
           loading ? <TextInput.Icon icon="loading" /> : null

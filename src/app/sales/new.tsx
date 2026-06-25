@@ -68,12 +68,13 @@ export default function NewSaleScreen() {
       setItems(newItems);
     } else {
       if (errors.products) setErrors(prev => { const n = {...prev}; delete n.products; return n; });
-      const existingItem = items.findIndex(item => item.product_id === productId);
+      const existingIndex = items.findIndex(item => item.product_id === productId);
 
-      if (existingItem >= 0) {
-        const newItems = [...items];
-        newItems[existingItem].quantity = quantity.toString();
-        const itemsWithUpdatedPrices = recalculateAllPrices(newItems, products);
+      if (existingIndex >= 0) {
+        const updated = items.map((item, i) =>
+          i === existingIndex ? { ...item, quantity: quantity.toString() } : item
+        );
+        const itemsWithUpdatedPrices = recalculateAllPrices(updated, products);
         setItems(itemsWithUpdatedPrices);
       } else {
         const newItem: SaleItemForm = {
@@ -184,9 +185,11 @@ export default function NewSaleScreen() {
       >
       {loading ? (
         <ScrollView scrollEnabled={false} style={styles.scrollView}>
-          <SkeletonCard lines={4} />
-          <SkeletonCard lines={3} />
-          <SkeletonCard lines={3} />
+          <View style = {styles.content}>
+            <SkeletonCard lines={5} />
+            <SkeletonCard lines={10} />
+            <SkeletonCard lines={3} />
+          </View>
         </ScrollView>
       ) : (
         <ScrollView keyboardShouldPersistTaps="handled" style={styles.scrollView}>

@@ -15,7 +15,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Edit, Trash2, XCircle } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { ActivityIndicator, Text } from 'react-native-paper';
+import { Text } from 'react-native-paper';
 
 export default function ShipmentDetailsScreen() {
   const { user } = useAuth();
@@ -89,15 +89,11 @@ export default function ShipmentDetailsScreen() {
     }
   };
 
-  const getTotalSold = () => {
-    if (!shipment.products) return 0;
-    return shipment.products.reduce((total, product) => total + product.sold_quantity, 0);
-  };
+  const getTotalSold = () =>
+    shipment?.products?.reduce((total, product) => total + product.sold_quantity, 0) ?? 0;
 
-  const getTotalInitial = () => {
-    if (!shipment.products) return 0;
-    return shipment.products.reduce((total, product) => total + product.initial_quantity, 0);
-  };
+  const getTotalInitial = () =>
+    shipment?.products?.reduce((total, product) => total + product.initial_quantity, 0) ?? 0;
 
   const getTotalValue = () => {
     return sales
@@ -145,10 +141,10 @@ export default function ShipmentDetailsScreen() {
       {loading ? (
         <ScrollView style={styles.content} scrollEnabled={false}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
-            <SkeletonCard style={{ width: '48%' }} lines={2} />
-            <SkeletonCard style={{ width: '48%' }} lines={2} />
-            <SkeletonCard style={{ width: '48%' }} lines={2} />
-            <SkeletonCard style={{ width: '48%' }} lines={2} />
+            <SkeletonCard style={{ width: '48%' }} lines={4} />
+            <SkeletonCard style={{ width: '48%' }} lines={4} />
+            <SkeletonCard style={{ width: '48%' }} lines={4} />
+            <SkeletonCard style={{ width: '48%' }} lines={4} />
           </View>
           <SkeletonCard lines={3} hasProgressBar />
           <SkeletonCard lines={3} hasProgressBar />

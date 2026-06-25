@@ -1,3 +1,4 @@
+import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { CustomerService } from '@/service/customerService';
 import { Customer } from '@/types/Customer';
@@ -21,7 +22,7 @@ export default function CustomerSearchInput({
   onCustomerSelect,
   onDropdownStateChange,
   placeholder = "Nome do cliente",
-  label = "Cliente *",
+  label = "Cliente*",
   error = false
 }: CustomerSearchInputProps) {
   const { user } = useAuth();
@@ -31,7 +32,6 @@ export default function CustomerSearchInput({
   const [loading, setLoading] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const isSelectingRef = useRef(false);
-  const containerRef = useRef(null);
 
   useEffect(() => {
     loadCustomers();
@@ -42,19 +42,15 @@ export default function CustomerSearchInput({
       filterSuggestions(value);
     } else {
       setSuggestions([]);
-      setShowDropdown(false);
       setSelectedCustomer(null);
     }
   }, [value, customers]);
 
+  // Única fonte de verdade para showDropdown e onDropdownStateChange
   useEffect(() => {
-    if (!isSelectingRef.current && suggestions.length > 0 && value.trim().length >= 2) {
-      setShowDropdown(true);
-      onDropdownStateChange?.(true);
-    } else {
-      setShowDropdown(false);
-      onDropdownStateChange?.(false);
-    }
+    const open = !isSelectingRef.current && suggestions.length > 0 && value.trim().length >= 2;
+    setShowDropdown(open);
+    onDropdownStateChange?.(open);
   }, [suggestions, value, onDropdownStateChange]);
 
   const loadCustomers = async () => {
@@ -84,7 +80,10 @@ export default function CustomerSearchInput({
   };
 
   const filterSuggestions = (text: string) => {
-    if (text.trim().length < 2) { setSuggestions([]); setShowDropdown(false); return; }
+    if (text.trim().length < 2) {
+      setSuggestions([]);
+      return;
+    }
     const filtered = customers
       .map(c => ({ customer: c, similarity: calculateSimilarity(text, c.name) }))
       .filter(i => i.similarity > 0.3)
@@ -92,28 +91,26 @@ export default function CustomerSearchInput({
       .slice(0, 5)
       .map(i => i.customer);
     setSuggestions(filtered);
-    setShowDropdown(filtered.length > 0);
   };
 
   const selectCustomer = useCallback((customer: Customer) => {
     if (isSelectingRef.current) return;
     isSelectingRef.current = true;
-    closeDropdown();
+    setSuggestions([]);
     setSelectedCustomer(customer);
     onChangeText(customer.name);
     onCustomerSelect?.(customer);
+    Keyboard.dismiss();
     setTimeout(() => { isSelectingRef.current = false; }, 50);
   }, [onChangeText, onCustomerSelect]);
 
   const closeDropdown = useCallback(() => {
-    setShowDropdown(false);
-    onDropdownStateChange?.(false);
     setSuggestions([]);
     Keyboard.dismiss();
-  }, [onDropdownStateChange]);
+  }, []);
 
   return (
-    <View style={styles.container} ref={containerRef}>
+    <View style={styles.container}>
       <TextInput
         value={value}
         onChangeText={(text) => {
@@ -126,11 +123,11 @@ export default function CustomerSearchInput({
         style={styles.input}
         mode="outlined"
         label={label}
-        placeholder={placeholder}
-        outlineColor={error ? "#dc2626" : "#d1d5db"}
-        activeOutlineColor={error ? "#dc2626" : "#2563eb"}
+        // placeholder={placeholder}
+        outlineColor={error ? COLORS.error : COLORS.borderGray}
+        activeOutlineColor={error ? COLORS.error : COLORS.mediumBlue}
         right={
-          selectedCustomer ? <TextInput.Icon icon="check-circle" color="#059669" /> :
+          selectedCustomer ? <TextInput.Icon icon="check-circle" color={COLORS.green} /> :
           loading ? <TextInput.Icon icon="loading" /> : null
         }
       />
@@ -138,20 +135,39 @@ export default function CustomerSearchInput({
       {showDropdown && suggestions.length > 0 && (
         <>
           <View style={styles.overlayView} pointerEvents="box-none">
-            <Pressable style={styles.overlay} onPress={() => closeDropdown()} />
+            <Pressable style={styles.overlay} onPress={closeDropdown} />
           </View>
           <View style={styles.dropdownContainer} pointerEvents="auto">
-            <ScrollView style={styles.dropdown} scrollEnabled nestedScrollEnabled showsVerticalScrollIndicator keyboardShouldPersistTaps="handled">
+            <ScrollView
+              style={styles.dropdown}
+              nestedScrollEnabled
+              showsVerticalScrollIndicator
+              keyboardShouldPersistTaps="handled"
+            >
               {suggestions.map((item) => (
-                <TouchableOpacity key={item.id} style={styles.suggestionItem} onPress={() => selectCustomer(item)} activeOpacity={0.7}>
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.suggestionItem}
+                  onPress={() => selectCustomer(item)}
+                  activeOpacity={0.7}
+                >
                   <View style={styles.suggestionContent}>
                     <Text style={styles.suggestionName}>{item.name}</Text>
                     <View style={styles.suggestionInfo}>
-                      <Text style={styles.suggestionPurchases}>{item.purchase_count} compra{item.purchase_count !== 1 ? 's' : ''}</Text>
-                      {item.total_owed > 0 && <Text style={styles.suggestionOwed}>R$ {item.total_owed.toFixed(2)} devido</Text>}
+                      <Text style={styles.suggestionPurchases}>
+                        {item.purchase_count} compra{item.purchase_count !== 1 ? 's' : ''}
+                      </Text>
+                      {item.total_owed > 0 && (
+                        <Text style={styles.suggestionOwed}>
+                          R$ {item.total_owed.toFixed(2)} devido
+                        </Text>
+                      )}
                     </View>
                   </View>
-                  <View style={[styles.statusIndicator, item.status === 'devedor' ? styles.statusDebtor : styles.statusCurrent]} />
+                  <View style={[
+                    styles.statusIndicator,
+                    item.status === 'devedor' ? styles.statusDebtor : styles.statusCurrent
+                  ]} />
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -163,19 +179,85 @@ export default function CustomerSearchInput({
 }
 
 const styles = StyleSheet.create({
-  container: { position: 'relative', zIndex: 1000 },
-  input: { backgroundColor: '#ffffff' },
-  overlayView: { position: 'absolute', top: -9999, left: -9999, right: -9999, bottom: -9999, zIndex: 999 },
-  overlay: { flex: 1 },
-  dropdownContainer: { position: 'absolute', top: '100%', left: 0, right: 0, maxHeight: 280, backgroundColor: '#ffffff', borderRadius: 8, borderWidth: 2, borderColor: '#2563eb', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 100, zIndex: 1000, marginTop: 4 },
-  dropdown: { maxHeight: 280 },
-  suggestionItem: { flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: '#f3f4f6', backgroundColor: '#ffffff' },
-  suggestionContent: { flex: 1 },
-  suggestionName: { fontSize: 14, fontWeight: '600', color: '#111827', marginBottom: 2 },
-  suggestionInfo: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  suggestionPurchases: { fontSize: 12, color: '#6b7280' },
-  suggestionOwed: { fontSize: 12, color: '#dc2626', fontWeight: '500' },
-  statusIndicator: { width: 8, height: 8, borderRadius: 4 },
-  statusDebtor: { backgroundColor: '#dc2626' },
-  statusCurrent: { backgroundColor: '#059669' },
+  container: {
+    position: 'relative',
+    zIndex: 1000,
+  },
+  input: {
+    backgroundColor: COLORS.white,
+  },
+  overlayView: {
+    position: 'absolute',
+    top: -9999,
+    left: -9999,
+    right: -9999,
+    bottom: -9999,
+    zIndex: 999,
+  },
+  overlay: {
+    flex: 1,
+  },
+  dropdownContainer: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    maxHeight: 280,
+    backgroundColor: COLORS.white,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: COLORS.mediumBlue,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 100,
+    zIndex: 1000,
+    marginTop: 4,
+  },
+  dropdown: {
+    maxHeight: 280,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.softGray,
+    backgroundColor: COLORS.white,
+  },
+  suggestionContent: {
+    flex: 1,
+  },
+  suggestionName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textDark,
+    marginBottom: 2,
+  },
+  suggestionInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  suggestionPurchases: {
+    fontSize: 12,
+    color: COLORS.textMedium,
+  },
+  suggestionOwed: {
+    fontSize: 12,
+    color: COLORS.error,
+    fontWeight: '500',
+  },
+  statusIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  statusDebtor: {
+    backgroundColor: COLORS.error,
+  },
+  statusCurrent: {
+    backgroundColor: COLORS.green,
+  },
 });

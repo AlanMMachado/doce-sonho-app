@@ -1,3 +1,4 @@
+import NetworkStatusBanner from '@/components/NetworkStatusBanner';
 import { COLORS } from '@/constants/Colors';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -11,22 +12,25 @@ interface HeaderProps {
 
 export default function Header({ title, subtitle, actions }: HeaderProps) {
   return (
-    <View style={styles.header}>
-      {/* Decorative circles background */}
-      <View style={styles.decorative1} />
-      <View style={styles.decorative2} />
-      
-      <View style={styles.headerContent}>
-        <View style={styles.textContainer}>
-          <Text style={styles.title}>{title}</Text>
-          {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
-        </View>
-        {actions && <View style={styles.actionsContainer}>{actions}</View>}
-      </View>
+    <>
+      <View style={styles.header}>
+        {/* Decorative circles background */}
+        <View style={styles.decorative1} />
+        <View style={styles.decorative2} />
 
-      {/* Bottom accent line */}
-      <View style={styles.accentLine} />
-    </View>
+        <View style={styles.headerContent}>
+          <View style={styles.textContainer}>
+            <Text style={styles.title}>{title}</Text>
+            {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+          </View>
+          {actions && <View style={styles.actionsContainer}>{actions}</View>}
+        </View>
+
+        {/* Bottom accent line */}
+        <View style={styles.accentLine} />
+      </View>
+      <NetworkStatusBanner />
+    </>
   );
 }
 
@@ -38,8 +42,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.mediumBlue,
     position: 'relative',
     overflow: 'hidden',
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
     shadowColor: COLORS.mediumBlue,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,

@@ -1,7 +1,7 @@
 import Header from '@/components/Header';
 import ModernModal from '@/components/ModernModal';
 import SaleCard from '@/components/SaleCard';
-import SkeletonCard from '@/components/SkeletonCard';
+import SkeletonCard, { SkeletonBlock } from '@/components/SkeletonCard';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScreenData } from '@/hooks/useScreenData';
@@ -140,16 +140,47 @@ export default function ShipmentDetailsScreen() {
 
       {loading ? (
         <ScrollView style={styles.content} scrollEnabled={false}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
-            <SkeletonCard style={{ width: '48%' }} lines={4} />
-            <SkeletonCard style={{ width: '48%' }} lines={4} />
-            <SkeletonCard style={{ width: '48%' }} lines={4} />
-            <SkeletonCard style={{ width: '48%' }} lines={4} />
+          <View style={styles.kpisGrid}>
+            {[1, 2, 3, 4].map(i => (
+              <View key={i} style={styles.kpiCard}>
+                <SkeletonBlock width="60%" height={12} style={{ marginBottom: 4 }} />
+                <SkeletonBlock width="70%" height={24} style={{ marginBottom: 4 }} />
+                <SkeletonBlock width="40%" height={11} />
+              </View>
+            ))}
           </View>
-          <SkeletonCard lines={3} hasProgressBar />
-          <SkeletonCard lines={3} hasProgressBar />
-          <SkeletonCard lines={3} />
-          <SkeletonCard lines={3} />
+          <View style={styles.produtosSection}>
+            <View style={styles.sectionHeader}>
+              <SkeletonBlock width="35%" height={16} />
+              <SkeletonBlock width={30} height={22} style={{ borderRadius: 12 }} />
+            </View>
+            {[1, 2].map(i => (
+              <View key={i} style={[styles.produtoItem, i < 2 && { marginBottom: 12 }]}>
+                <View style={styles.produtoHeader}>
+                  <View style={styles.produtoInfo}>
+                    <SkeletonBlock width="65%" height={14} style={{ marginBottom: 4 }} />
+                    <SkeletonBlock width="40%" height={12} />
+                  </View>
+                  <SkeletonBlock width={80} height={24} style={{ borderRadius: 12 }} />
+                </View>
+                <View style={styles.produtoProgress}>
+                  <View style={styles.progressInfo}>
+                    <SkeletonBlock width="20%" height={13} />
+                    <SkeletonBlock width="15%" height={13} />
+                  </View>
+                  <SkeletonBlock width="100%" height={8} style={{ borderRadius: 4 }} />
+                </View>
+              </View>
+            ))}
+          </View>
+          <View style={styles.vendasSection}>
+            <View style={styles.sectionHeader}>
+              <SkeletonBlock width="25%" height={16} />
+              <SkeletonBlock width={30} height={22} style={{ borderRadius: 12 }} />
+            </View>
+            <SkeletonCard lines={3} />
+            <SkeletonCard lines={3} />
+          </View>
         </ScrollView>
       ) : !shipment ? (
         <View style={styles.errorContainer}>

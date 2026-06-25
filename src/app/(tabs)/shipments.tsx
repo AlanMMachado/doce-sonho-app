@@ -1,7 +1,7 @@
 import ConfigMenuButton from '@/components/ConfigMenuButton';
 import Header from '@/components/Header';
 import ModernModal from '@/components/ModernModal';
-import SkeletonCard from '@/components/SkeletonCard';
+import { SkeletonBlock } from '@/components/SkeletonCard';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScreenData } from '@/hooks/useScreenData';
@@ -56,18 +56,6 @@ export default function ShipmentsScreen() {
     }
   };
 
-  const getShipmentStatus = (shipment: Shipment) => {
-    if (!shipment.products || shipment.products.length === 0) return 'Sem produtos';
-
-    const totalInitial = shipment.products.reduce((sum, p) => sum + p.initial_quantity, 0);
-    const totalSold = shipment.products.reduce((sum, p) => sum + p.sold_quantity, 0);
-    const available = totalInitial - totalSold;
-
-    if (available === 0) return 'Esgotada';
-    if (totalSold === 0) return 'Nova';
-    return `${available} disponíveis`;
-  };
-
   const getProgressPercentage = (shipment: Shipment) => {
     if (!shipment.products || shipment.products.length === 0) return 0;
 
@@ -96,7 +84,40 @@ export default function ShipmentsScreen() {
 
       {loading ? (
         <ScrollView scrollEnabled={false} style={styles.content}>
-          <SkeletonCard lines={8} hasProgressBar />
+          {[1].map(i => (
+            <View key={i} style={styles.shipmentCard}>
+              <View style={styles.shipmentHeader}>
+                <View style={styles.dateContainer}>
+                  <SkeletonBlock width="30%" height={11} style={{ marginBottom: 4 }} />
+                  <SkeletonBlock width="50%" height={16} />
+                </View>
+                <View style={styles.headerBadges}>
+                  <SkeletonBlock width={52} height={30} style={{ borderRadius: 12 }} />
+                  <SkeletonBlock width={72} height={30} style={{ borderRadius: 12 }} />
+                </View>
+              </View>
+              <View style={styles.progressSection}>
+                <View style={styles.progressInfo}>
+                  <SkeletonBlock width="25%" height={13} />
+                  <SkeletonBlock width="15%" height={14} />
+                </View>
+                <SkeletonBlock width="100%" height={8} style={{ borderRadius: 4 }} />
+              </View>
+              <View style={styles.productsContainer}>
+                <SkeletonBlock width="80%" height={13} style={{ marginBottom: 4 }} />
+                <SkeletonBlock width="65%" height={13} style={{ marginBottom: 4 }} />
+                <SkeletonBlock width="72%" height={13} />
+              </View>
+              <View style={styles.footer}>
+                <SkeletonBlock width="28%" height={13} />
+                <View style={styles.cardActions}>
+                  <SkeletonBlock width={32} height={32} style={{ borderRadius: 8 }} />
+                  <SkeletonBlock width={32} height={32} style={{ borderRadius: 8 }} />
+                  <SkeletonBlock width={32} height={32} style={{ borderRadius: 8 }} />
+                </View>
+              </View>
+            </View>
+          ))}
         </ScrollView>
       ) : (
         <ScrollView

@@ -1,7 +1,7 @@
 import Header from '@/components/Header';
 import ModernModal from '@/components/ModernModal';
 import SaleCard from '@/components/SaleCard';
-import SkeletonCard from '@/components/SkeletonCard';
+import SkeletonCard, { SkeletonBlock } from '@/components/SkeletonCard';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScreenData } from '@/hooks/useScreenData';
@@ -13,7 +13,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Clock, DollarSign, ShoppingCart, XCircle } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Text } from 'react-native-paper';
+import { Text } from 'react-native-paper';
 
 type CustomerWithSales = Customer & {
   sales: Sale[];
@@ -101,14 +101,36 @@ export default function CustomerDetailsScreen() {
 
       {loading ? (
         <ScrollView style={styles.content} scrollEnabled={false}>
-          <SkeletonCard lines={2} />
-          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
-            <SkeletonCard style={{ flex: 1 }} lines={2} />
-            <SkeletonCard style={{ flex: 1 }} lines={2} />
+          <View style={styles.statusCard}>
+            <View style={styles.statusHeader}>
+              <View style={{ flex: 1 }}>
+                <SkeletonBlock width="55%" height={20} style={{ marginBottom: 8 }} />
+                <SkeletonBlock width="75%" height={13} />
+              </View>
+              <SkeletonBlock width={64} height={30} style={{ borderRadius: 16 }} />
+            </View>
           </View>
-          <SkeletonCard lines={2} />
-          <SkeletonCard lines={3} />
-          <SkeletonCard lines={3} />
+          <View style={styles.metricasContainer}>
+            <View style={styles.metricasRow}>
+              {[1, 2].map(i => (
+                <View key={i} style={styles.metricaCard}>
+                  <SkeletonBlock width={20} height={20} style={{ borderRadius: 10 }} />
+                  <SkeletonBlock width="55%" height={18} style={{ marginTop: 8, marginBottom: 4 }} />
+                  <SkeletonBlock width="75%" height={12} />
+                </View>
+              ))}
+            </View>
+            <View style={styles.metricaCardFull}>
+              <SkeletonBlock width={20} height={20} style={{ borderRadius: 10 }} />
+              <SkeletonBlock width="40%" height={18} style={{ marginTop: 8, marginBottom: 4 }} />
+              <SkeletonBlock width="50%" height={12} />
+            </View>
+          </View>
+          <View style={styles.historicoSection}>
+            <SkeletonBlock width="50%" height={16} style={{ marginBottom: 16 }} />
+            <SkeletonCard lines={3} />
+            <SkeletonCard lines={3} />
+          </View>
         </ScrollView>
       ) : !customer ? (
         <View style={styles.errorContainer}>

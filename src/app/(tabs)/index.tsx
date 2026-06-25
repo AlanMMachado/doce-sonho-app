@@ -1,7 +1,7 @@
 import ConfigMenuButton from '@/components/ConfigMenuButton';
 import Header from '@/components/Header';
 import SaleCard from '@/components/SaleCard';
-import SkeletonCard from '@/components/SkeletonCard';
+import SkeletonCard, { SkeletonBlock } from '@/components/SkeletonCard';
 import { COLORS } from '@/constants/Colors';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -92,12 +92,34 @@ export default function DashboardScreen() {
       />
       {loading ? (
         <ScrollView scrollEnabled={false} style={styles.content}>
-          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
-            <SkeletonCard style={{ flex: 1 }} lines={5} />
-            <SkeletonCard style={{ flex: 1 }} lines={5} />
+          <View style={styles.kpiContainer}>
+            {[1, 2].map(i => (
+              <View key={i} style={styles.kpiCard}>
+                <SkeletonBlock width={40} height={40} style={{ borderRadius: 10, marginBottom: 12 }} />
+                <SkeletonBlock width="60%" height={12} style={{ marginBottom: 4 }} />
+                <SkeletonBlock width="80%" height={20} style={{ marginBottom: 4 }} />
+                <SkeletonBlock width="50%" height={11} />
+              </View>
+            ))}
           </View>
-          <SkeletonCard lines={5} hasProgressBar />
-          <SkeletonCard lines={3} />
+          <View style={styles.goalCard}>
+            <View style={styles.goalHeader}>
+              <SkeletonBlock width="40%" height={16} />
+              <SkeletonBlock width={48} height={24} />
+            </View>
+            <SkeletonBlock width="100%" height={12} style={{ borderRadius: 6, marginBottom: 12 }} />
+            <SkeletonBlock width="55%" height={12} style={{ marginBottom: 4 }} />
+            <SkeletonBlock width="65%" height={12} style={{ marginBottom: 4 }} />
+            <SkeletonBlock width="75%" height={12} />
+          </View>
+          <View style={styles.salesSection}>
+            <View style={styles.sectionHeader}>
+              <SkeletonBlock width="45%" height={16} />
+              <SkeletonBlock width={30} height={22} style={{ borderRadius: 12 }} />
+            </View>
+            <SkeletonCard lines={3} />
+            <SkeletonCard lines={3} style={{ marginTop: 12 }} />
+          </View>
         </ScrollView>
       ) : (
         <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>

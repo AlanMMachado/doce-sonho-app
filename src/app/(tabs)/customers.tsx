@@ -1,6 +1,6 @@
 import ConfigMenuButton from '@/components/ConfigMenuButton';
 import Header from '@/components/Header';
-import SkeletonCard from '@/components/SkeletonCard';
+import { SkeletonBlock } from '@/components/SkeletonCard';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScreenData } from '@/hooks/useScreenData';
@@ -66,15 +66,43 @@ export default function CustomersScreen() {
 
       {loading ? (
         <ScrollView scrollEnabled={false} style={styles.content}>
-          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
-            <SkeletonCard style={{ flex: 1 }} lines={5} />
-            <SkeletonCard style={{ flex: 1 }} lines={5} />
-            <SkeletonCard style={{ flex: 1 }} lines={5} />
+          <View style={styles.summaryContainer}>
+            {[1, 2, 3].map(i => (
+              <View key={i} style={styles.summaryCard}>
+                <SkeletonBlock width={32} height={32} style={{ borderRadius: 16, marginBottom: 8 }} />
+                <SkeletonBlock width="70%" height={24} style={{ marginBottom: 4 }} />
+                <SkeletonBlock width="85%" height={12} style={{ marginBottom: 4 }} />
+                <SkeletonBlock width="60%" height={11} />
+              </View>
+            ))}
           </View>
-          <SkeletonCard lines={1} />
-          <View style={{ height: 20 }} />
-          <SkeletonCard lines={5} />
-          <SkeletonCard lines={5} />
+          <View style={styles.filtersContainer}>
+            <SkeletonBlock width="100%" height={56} style={{ borderRadius: 4, marginBottom: 12 }} />
+            <View style={styles.filterButtons}>
+              {[1, 2, 3].map(i => (
+                <View key={i} style={{ flex: 1 }}>
+                  <SkeletonBlock width="100%" height={42} style={{ borderRadius: 8 }} />
+                </View>
+              ))}
+            </View>
+          </View>
+          <View style={styles.listSection}>
+            <SkeletonBlock width="50%" height={16} style={{ marginBottom: 16 }} />
+            {[1, 2, 3].map(i => (
+              <View key={i} style={[styles.customerCard, i < 3 && { marginBottom: 12 }]}>
+                <View style={styles.customerHeader}>
+                  <View style={styles.customerInfo}>
+                    <SkeletonBlock width="55%" height={16} style={{ marginBottom: 4 }} />
+                    <SkeletonBlock width="75%" height={12} />
+                  </View>
+                  <View style={styles.statusContainer}>
+                    <SkeletonBlock width={60} height={22} style={{ borderRadius: 10, marginBottom: 6 }} />
+                    <SkeletonBlock width={80} height={14} />
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
         </ScrollView>
       ) : (
         <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>

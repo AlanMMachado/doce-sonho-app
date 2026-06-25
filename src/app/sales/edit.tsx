@@ -1,6 +1,6 @@
 import CustomerSearchInput from '@/components/CustomerSearchInput';
 import Header from '@/components/Header';
-import SkeletonCard from '@/components/SkeletonCard';
+import { SkeletonBlock } from '@/components/SkeletonCard';
 import { COLORS } from '@/constants/Colors';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -233,10 +233,79 @@ export default function EditSaleScreen() {
       >
       {loading ? (
         <ScrollView scrollEnabled={false} style={styles.scrollView}>
-          <View style = {styles.content}>
-            <SkeletonCard lines={5} />
-            <SkeletonCard lines={10} />
-            <SkeletonCard lines={3} />
+          <View style={styles.content}>
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <SkeletonBlock width={40} height={40} style={{ borderRadius: 12 }} />
+                <View style={{ flex: 1 }}>
+                  <SkeletonBlock width="65%" height={18} style={{ marginBottom: 4 }} />
+                  <SkeletonBlock width="45%" height={13} />
+                </View>
+              </View>
+              <View style={styles.produtosListContainer}>
+                {[1, 2, 3].map(i => (
+                  <View key={i} style={styles.produtoListItem}>
+                    <View style={styles.produtoListInfo}>
+                      <SkeletonBlock width="60%" height={14} style={{ marginBottom: 4 }} />
+                      <SkeletonBlock width="40%" height={12} />
+                    </View>
+                    <View style={styles.produtoListQuantityControl}>
+                      <SkeletonBlock width={36} height={36} style={{ borderRadius: 8 }} />
+                      <SkeletonBlock width={50} height={36} style={{ borderRadius: 4 }} />
+                      <SkeletonBlock width={36} height={36} style={{ borderRadius: 8 }} />
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <SkeletonBlock width={40} height={40} style={{ borderRadius: 12 }} />
+                <View style={{ flex: 1 }}>
+                  <SkeletonBlock width="55%" height={18} style={{ marginBottom: 4 }} />
+                  <SkeletonBlock width="40%" height={13} />
+                </View>
+              </View>
+              <View style={styles.inputContainer}>
+                <SkeletonBlock width="100%" height={56} style={{ borderRadius: 4 }} />
+              </View>
+              <View style={styles.inputContainer}>
+                <SkeletonBlock width="40%" height={13} style={{ marginBottom: 10 }} />
+                <View style={styles.paymentGrid}>
+                  {[1, 2, 3, 4].map(i => (
+                    <View key={i} style={{ flex: 1, minWidth: '47%' }}>
+                      <SkeletonBlock width="100%" height={42} style={{ borderRadius: 10 }} />
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <SkeletonBlock width={40} height={40} style={{ borderRadius: 12 }} />
+                <View style={{ flex: 1 }}>
+                  <SkeletonBlock width="60%" height={18} style={{ marginBottom: 4 }} />
+                  <SkeletonBlock width="45%" height={13} />
+                </View>
+              </View>
+              <View style={styles.statusGrid}>
+                {[1, 2].map(i => (
+                  <View key={i} style={{ flex: 1 }}>
+                    <SkeletonBlock width="100%" height={46} style={{ borderRadius: 10 }} />
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.actionButtons}>
+              {[1, 2].map(i => (
+                <View key={i} style={{ flex: 1 }}>
+                  <SkeletonBlock width="100%" height={50} style={{ borderRadius: 12 }} />
+                </View>
+              ))}
+            </View>
           </View>
         </ScrollView>
       ) : (

@@ -1,6 +1,6 @@
 import ConfigMenuButton from '@/components/ConfigMenuButton';
 import Header from '@/components/Header';
-import SkeletonCard from '@/components/SkeletonCard';
+import { SkeletonBlock } from '@/components/SkeletonCard';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScreenData } from '@/hooks/useScreenData';
@@ -8,7 +8,7 @@ import { ReportService } from '@/service/reportService';
 import { ReportResponse } from '@/types/Report';
 import React, { useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { ActivityIndicator, Text } from 'react-native-paper';
+import { Text } from 'react-native-paper';
 
 export default function ReportsScreen() {
   const { user } = useAuth();
@@ -29,15 +29,56 @@ export default function ReportsScreen() {
   return (
     <View style={styles.container}>
       <Header title="Relatórios" subtitle="Análise de desempenho" actions={<ConfigMenuButton />} />
+      <View style={styles.periodWrapper}>
+        <View style={styles.periodContainer}>
+          {([
+            { value: 'day', label: 'Hoje' },
+            { value: 'week', label: 'Semana' },
+            { value: 'month', label: 'Mês' },
+          ] as const).map(({ value, label }) => (
+            <TouchableOpacity
+              key={value}
+              onPress={() => setPeriod(value)}
+              style={[styles.periodButton, period === value && styles.periodButtonActive]}
+            >
+              <Text style={[styles.periodText, period === value && styles.periodTextActive]}>
+                {label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
       {loading ? (
         <ScrollView scrollEnabled={false} style={styles.content}>
-          <SkeletonCard lines={1} />
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
-            <SkeletonCard style={{ width: '48%' }} lines={3} />
-            <SkeletonCard style={{ width: '48%' }} lines={3} />
-            <SkeletonCard style={{ width: '48%' }} lines={3} />
+          <View style={styles.summaryGrid}>
+            {[1, 2, 3].map(i => (
+              <View key={i} style={styles.summaryCard}>
+                <SkeletonBlock width={40} height={40} style={{ borderRadius: 10, marginBottom: 12 }} />
+                <SkeletonBlock width="60%" height={12} style={{ marginBottom: 4 }} />
+                <SkeletonBlock width="80%" height={20} style={{ marginBottom: 4 }} />
+                <SkeletonBlock width="50%" height={11} />
+              </View>
+            ))}
           </View>
-          <SkeletonCard lines={3} />
+          <View style={styles.topProductsSection}>
+            <View style={styles.sectionHeader}>
+              <SkeletonBlock width="55%" height={16} />
+              <SkeletonBlock width={30} height={22} style={{ borderRadius: 12 }} />
+            </View>
+            <View style={styles.productsList}>
+              {[1, 2, 3].map(i => (
+                <View key={i} style={styles.productItem}>
+                  <SkeletonBlock width={32} height={32} style={{ borderRadius: 16 }} />
+                  <View style={styles.productInfo}>
+                    <SkeletonBlock width="65%" height={14} style={{ marginBottom: 2 }} />
+                    <SkeletonBlock width="40%" height={12} />
+                  </View>
+                  <SkeletonBlock width={60} height={15} />
+                </View>
+              ))}
+            </View>
+          </View>
         </ScrollView>
       ) : !report ? (
         <View style={styles.errorContainer}>
@@ -49,24 +90,6 @@ export default function ReportsScreen() {
       ) : (
         <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
           <View style={styles.content}>
-            <View style={styles.periodContainer}>
-              {([
-                { value: 'day', label: 'Hoje' },
-                { value: 'week', label: 'Semana' },
-                { value: 'month', label: 'Mês' },
-              ] as const).map(({ value, label }) => (
-                <TouchableOpacity
-                  key={value}
-                  onPress={() => setPeriod(value)}
-                  style={[styles.periodButton, period === value && styles.periodButtonActive]}
-                >
-                  <Text style={[styles.periodText, period === value && styles.periodTextActive]}>
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
             <View style={styles.summaryGrid}>
               <View style={styles.summaryCard}>
                 <View style={styles.summaryIconContainer}>
@@ -133,7 +156,8 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 16, color: COLORS.textMedium, marginBottom: 16 },
   retryButton: { backgroundColor: COLORS.mediumBlue, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
   retryButtonText: { color: COLORS.white, fontWeight: 'bold' },
-  periodContainer: { flexDirection: 'row', gap: 8, marginBottom: 20, backgroundColor: COLORS.white, padding: 4, borderRadius: 10, borderWidth: 1, borderColor: COLORS.borderGray },
+  periodWrapper: { paddingHorizontal: 16, paddingTop: 16 },
+  periodContainer: { flexDirection: 'row', gap: 8, marginBottom: 16, backgroundColor: COLORS.white, padding: 4, borderRadius: 10, borderWidth: 1, borderColor: COLORS.borderGray },
   periodButton: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 8 },
   periodButtonActive: { backgroundColor: COLORS.mediumBlue },
   periodText: { fontSize: 14, fontWeight: '600', color: COLORS.textMedium },

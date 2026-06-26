@@ -232,9 +232,15 @@ export default function NewShipmentScreen() {
               </View>
             </View>
             <TextInput value={notes} onChangeText={(t) => setNotes(t.slice(0, 200))}
-              style={styles.notesInput} mode="outlined" multiline numberOfLines={3}
-              placeholder="Ex: Remessa da segunda-feira, lembrar de congelar..."
-              outlineColor={COLORS.borderGray} activeOutlineColor={COLORS.mediumBlue} placeholderTextColor={COLORS.textLight} />
+              style={styles.notesInput}
+              mode="outlined"
+              multiline
+              numberOfLines={3}
+              placeholder="Ex: Remessa da segunda-feira."
+              outlineColor={COLORS.borderGray}
+              activeOutlineColor={COLORS.mediumBlue}
+              placeholderTextColor={COLORS.textLight}
+              contentStyle={{ paddingTop: 10}}/> 
             <Text style={styles.charCount}>{notes.length}/200</Text>
           </View>
 

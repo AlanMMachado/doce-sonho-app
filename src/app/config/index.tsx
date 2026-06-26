@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
     color: COLORS.textMedium,
   },
   logoutItem: {
-    marginTop: 24,
+    marginTop: 12,
     borderColor: COLORS.error,
     borderWidth: 1.5,
   },

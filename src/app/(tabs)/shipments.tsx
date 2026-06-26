@@ -158,12 +158,6 @@ export default function ShipmentsScreen() {
                     </View>
                   </View>
 
-                  {shipment.notes && (
-                    <View style={styles.notesContainer}>
-                      <Text style={styles.notesText}>{shipment.notes}</Text>
-                    </View>
-                  )}
-
                   {shipment.products && shipment.products.length > 0 && (
                     <View style={styles.progressSection}>
                       <View style={styles.progressInfo}>
@@ -188,6 +182,12 @@ export default function ShipmentsScreen() {
                       {shipment.products.length > 3 && (
                         <Text style={styles.moreItems}>+ {shipment.products.length - 3} produtos</Text>
                       )}
+                    </View>
+                  )}
+                  
+                  {shipment.notes && (
+                    <View style={styles.notesContainer}>
+                      <Text style={styles.notesText}>{shipment.notes}</Text>
                     </View>
                   )}
 

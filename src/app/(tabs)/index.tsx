@@ -1,5 +1,6 @@
 import ConfigMenuButton from '@/components/ConfigMenuButton';
 import Header from '@/components/Header';
+import ModernModal from '@/components/ModernModal';
 import SaleCard from '@/components/SaleCard';
 import SkeletonCard, { SkeletonBlock } from '@/components/SkeletonCard';
 import { COLORS } from '@/constants/Colors';
@@ -10,6 +11,7 @@ import { ProductService } from '@/service/productService';
 import { ReportService } from '@/service/reportService';
 import { SaleService } from '@/service/saleService';
 import { Product } from '@/types/Product';
+import { Sale } from '@/types/Sale';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useRouter } from 'expo-router';
@@ -22,6 +24,8 @@ export default function DashboardScreen() {
   const { state, dispatch, reloadProfile } = useApp();
   const router = useRouter();
   const [products, setProducts] = useState<{ [key: string]: Product }>({});
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [saleToMark, setSaleToMark] = useState<Sale | null>(null);
   const [kpis, setKpis] = useState({
     totalSold: 0,
     totalPending: 0,
@@ -75,6 +79,18 @@ export default function DashboardScreen() {
   };
 
   const { loading, refreshing, onRefresh } = useScreenData(loadData);
+
+  const markAsPaid = async (sale: Sale) => {
+    try {
+      await SaleService.updateStatus(user!.id, sale.id, 'OK');
+      await loadData();
+      setPaymentModalVisible(false);
+      setSaleToMark(null);
+    } catch (error) {
+      console.error('Erro ao marcar venda como paga:', error);
+      alert('Erro ao registrar pagamento. Tente novamente.');
+    }
+  };
 
   const getProductName = (productId: string | null, item?: { product_type?: string; product_flavor?: string }) => {
     const product = productId ? products[productId] : undefined;
@@ -189,6 +205,7 @@ export default function DashboardScreen() {
                       sale={sale}
                       getProductName={getProductName}
                       showDate={true}
+                      onMarkAsPaid={(v) => { setSaleToMark(v); setPaymentModalVisible(true); }}
                     />
                   ))}
                 </View>
@@ -201,6 +218,17 @@ export default function DashboardScreen() {
       <TouchableOpacity style={styles.fab} onPress={() => router.push('/sales/new')}>
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
+
+      <ModernModal
+        visible={paymentModalVisible}
+        onClose={() => { setPaymentModalVisible(false); setSaleToMark(null); }}
+        title="Confirmar Pagamento"
+        primaryAction={{ label: 'Confirmar', onPress: () => { if (saleToMark) markAsPaid(saleToMark); } }}
+        secondaryAction={{ label: 'Cancelar', onPress: () => { setPaymentModalVisible(false); setSaleToMark(null); } }}>
+        <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>
+          Marcar a venda de R$ {(saleToMark?.total_price || 0).toFixed(2)} como paga?
+        </Text>
+      </ModernModal>
     </View>
   );
 }

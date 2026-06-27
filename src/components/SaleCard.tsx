@@ -28,62 +28,68 @@ export default function SaleCard({
   onDelete,
   onMarkAsPaid,
 }: SaleCardProps) {
+  const isPaid = sale.status === 'OK';
+
   return (
-    <View style={styles.saleItem}>
+    <View style={[styles.saleItem, isPaid ? styles.saleItemPaid : styles.saleItemPending]}>
       <View style={styles.saleContent}>
         <View style={styles.saleInfo}>
           <Text style={styles.saleCustomer}>
             {sale.customer_name || 'Cliente'}
             {showDate && (
               <Text style={styles.saleTime}>
-                {' '}- {format(parseISO(sale.date), 'HH:mm', { locale: ptBR })}
+                {' · '}{format(parseISO(sale.date), 'HH:mm', { locale: ptBR })}
               </Text>
             )}
           </Text>
 
           {sale.items.map((item, index) => (
             <Text key={`${sale.id}-item-${index}`} style={styles.saleProduct}>
-              • {getProductName(item.product_id, item)} - <Text style={styles.saleQuantity}>{item.quantity}</Text> (R$ {item.subtotal.toFixed(2)})
+              {'• '}{getProductName(item.product_id, item)}{' · '}<Text style={styles.saleQuantity}>{item.quantity} un</Text>{' · R$ '}{item.subtotal.toFixed(2)}
             </Text>
           ))}
 
           {showDate && (
             <Text style={styles.saleDate}>
-              {format(parseISO(sale.date), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+              {format(parseISO(sale.date), 'dd/MM/yyyy', { locale: ptBR })}
             </Text>
           )}
         </View>
 
         <View style={styles.saleValues}>
           <Text style={styles.salePrice}>R$ {sale.total_price.toFixed(2)}</Text>
-          <View style={[styles.statusBadge, sale.status === 'OK' ? styles.statusPaid : styles.statusPending]}>
-            <Text style={styles.statusText}>
-              {sale.status === 'OK' ? 'Pago' : 'Pendente'}
-            </Text>
-          </View>
+          <Text style={[styles.statusLabel, isPaid ? styles.statusLabelPaid : styles.statusLabelPending]}>
+            {'● '}{isPaid ? 'Pago' : 'Pendente'}
+          </Text>
         </View>
       </View>
 
       {(showActions || onMarkAsPaid) && (
         <View style={styles.actionsRow}>
-          {sale.status === 'PENDENTE' && onMarkAsPaid && (
-            <TouchableOpacity style={styles.markPaidButton} onPress={() => onMarkAsPaid(sale)} activeOpacity={0.7}>
-              <Text style={styles.markPaidText}>Marcar Pago</Text>
-            </TouchableOpacity>
-          )}
           {showActions && (
             <View style={styles.actionButtons}>
               {onEdit && (
                 <TouchableOpacity style={styles.editButton} onPress={() => onEdit(sale)} activeOpacity={0.7}>
-                  <Edit size={14} color={COLORS.mediumBlue} />
+                  <Edit size={13} color={COLORS.mediumBlue} />
+                  <Text style={styles.editButtonText}>Editar</Text>
                 </TouchableOpacity>
               )}
               {onDelete && (
                 <TouchableOpacity style={styles.deleteButton} onPress={() => onDelete(sale)} activeOpacity={0.7}>
-                  <Trash2 size={14} color={COLORS.error} />
+                  <Trash2 size={13} color={COLORS.error} />
+                  <Text style={styles.deleteButtonText}>Excluir</Text>
                 </TouchableOpacity>
               )}
             </View>
+          )}
+          {sale.status === 'PENDENTE' && onMarkAsPaid && (
+            <TouchableOpacity
+              style={[styles.markPaidButton, !showActions && { marginLeft: 'auto' }]}
+              onPress={() => onMarkAsPaid(sale)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.markPaidText}>Marcar Pago</Text>
+            </TouchableOpacity>
           )}
         </View>
       )}
@@ -92,7 +98,9 @@ export default function SaleCard({
 }
 
 const styles = StyleSheet.create({
-  saleItem: { paddingVertical: 12, paddingHorizontal: 16, backgroundColor: COLORS.softGray, borderRadius: 8, borderWidth: 1, borderColor: COLORS.borderGray },
+  saleItem: { paddingVertical: 12, paddingHorizontal: 16, backgroundColor: COLORS.white, borderRadius: 8, borderWidth: 1, borderColor: COLORS.borderGray, borderLeftWidth: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 },
+  saleItemPaid: { borderLeftColor: COLORS.green },
+  saleItemPending: { borderLeftColor: COLORS.warning },
   saleContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   saleInfo: { flex: 1, flexDirection: 'column' },
   saleCustomer: { fontSize: 14, fontWeight: '600', color: COLORS.textDark, marginBottom: 2 },
@@ -102,14 +110,15 @@ const styles = StyleSheet.create({
   saleDate: { fontSize: 11, color: COLORS.textLight, marginTop: 4 },
   saleValues: { alignItems: 'flex-end', marginLeft: 12 },
   salePrice: { fontSize: 15, fontWeight: 'bold', color: COLORS.textDark, marginBottom: 4 },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  statusPaid: { backgroundColor: COLORS.green },
-  statusPending: { backgroundColor: COLORS.warning },
-  statusText: { fontSize: 11, fontWeight: 'bold', color: COLORS.white },
+  statusLabel: { fontSize: 11, fontWeight: 'bold' },
+  statusLabelPaid: { color: COLORS.green },
+  statusLabelPending: { color: COLORS.warning },
   actionsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: COLORS.borderGray },
   markPaidButton: { backgroundColor: COLORS.green, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
   markPaidText: { color: COLORS.white, fontSize: 12, fontWeight: 'bold' },
-  actionButtons: { flexDirection: 'row', gap: 8, marginLeft: 'auto' },
-  editButton: { width: 32, height: 32, borderRadius: 8, backgroundColor: COLORS.white, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLORS.mediumBlue },
-  deleteButton: { width: 32, height: 32, borderRadius: 8, backgroundColor: COLORS.white, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLORS.error },
+  actionButtons: { flexDirection: 'row', gap: 8 },
+  editButton: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.mediumBlue },
+  editButtonText: { fontSize: 12, fontWeight: '600', color: COLORS.mediumBlue },
+  deleteButton: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.error },
+  deleteButtonText: { fontSize: 12, fontWeight: '600', color: COLORS.error },
 });

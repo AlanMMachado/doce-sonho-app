@@ -231,7 +231,7 @@ export default function CustomerDetailsScreen() {
         visible={paymentModalVisible}
         onClose={() => { setPaymentModalVisible(false); setSaleToMark(null); }}
         title="Confirmar Pagamento"
-        primaryAction={{ label: 'Confirmar', onPress: () => saleToMark && markAsPaid(saleToMark) }}
+        primaryAction={{ label: 'Confirmar', onPress: () => { if (saleToMark) markAsPaid(saleToMark); } }}
         secondaryAction={{ label: 'Cancelar', onPress: () => { setPaymentModalVisible(false); setSaleToMark(null); } }}>
         <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>
           Marcar a venda de R$ {(saleToMark?.total_price || 0).toFixed(2)} como paga?

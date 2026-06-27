@@ -7,7 +7,6 @@ export interface ReportParams {
 export interface ReportResponse {
   totalSold: number;
   totalPending: number;
-  totalProfit: number;
   quantitySold: number;
   topProducts: Array<{
     product: string;

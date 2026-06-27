@@ -6,7 +6,6 @@ export interface Product {
   flavor: string;
   initial_quantity: number;
   sold_quantity: number;
-  production_cost: number;
   base_price: number;
   promo_price?: number;
   promo_quantity?: number;
@@ -18,7 +17,6 @@ export interface ProductCreateParams {
   type: string;
   flavor: string;
   initial_quantity: number;
-  production_cost?: number;
   base_price: number;
   promo_price?: number;
   promo_quantity?: number;
@@ -29,7 +27,6 @@ export interface ShipmentProduct {
   type: string;
   flavor: string;
   initial_quantity: number;
-  production_cost?: number;
   base_price: number;
   promo_price?: number;
   promo_quantity?: number;

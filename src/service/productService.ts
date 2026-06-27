@@ -13,7 +13,6 @@ export const ProductService = {
         flavor: product.flavor,
         initial_quantity: product.initial_quantity,
         sold_quantity: 0,
-        production_cost: product.production_cost ?? (product.type === 'trufa' ? 2.50 : 5.00),
         base_price: product.base_price,
         promo_price: product.promo_price ?? null,
         promo_quantity: product.promo_quantity ?? null,

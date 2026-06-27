@@ -32,7 +32,7 @@ export const ReportService = {
 
     const { data: sales, error } = await supabase
       .from('sales')
-      .select('total_price, status, items:sale_items(quantity, subtotal, product_type, product_flavor, product_id, product:products(production_cost))')
+      .select('total_price, status, items:sale_items(quantity, subtotal, product_type, product_flavor, product_id)')
       .eq('user_id', userId)
       .gte('date', `${startDate}T00:00:00Z`)
       .lte('date', `${endDate}T23:59:59Z`);
@@ -42,7 +42,6 @@ export const ReportService = {
     let totalSold = 0;
     let totalPending = 0;
     let quantitySold = 0;
-    let totalCost = 0;
     const productMap: Record<string, { quantity: number; totalValue: number }> = {};
 
     for (const sale of sales ?? []) {
@@ -51,7 +50,6 @@ export const ReportService = {
 
       for (const item of (sale.items as any[]) ?? []) {
         quantitySold += item.quantity ?? 0;
-        totalCost += ((item.product as any)?.production_cost ?? 0) * (item.quantity ?? 0);
 
         const productName = `${item.product_type ?? '?'} - ${item.product_flavor ?? '?'}`;
         if (!productMap[productName]) productMap[productName] = { quantity: 0, totalValue: 0 };
@@ -68,7 +66,6 @@ export const ReportService = {
     return {
       totalSold,
       totalPending,
-      totalProfit: totalSold - totalCost,
       quantitySold,
       topProducts,
     };

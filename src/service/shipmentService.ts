@@ -11,17 +11,13 @@ async function resolveProductPrices(
   promo_price: number | null;
   promo_quantity: number | null;
   product_config_id: string | null;
-  production_cost: number;
 }> {
-  const production_cost = product.production_cost ?? (product.type === 'trufa' ? 2.50 : 5.00);
-
   if (product.base_price && product.base_price > 0) {
     return {
       base_price: product.base_price,
       promo_price: product.promo_price ?? null,
       promo_quantity: product.promo_quantity ?? null,
       product_config_id: product.product_config_id ?? null,
-      production_cost,
     };
   }
 
@@ -32,11 +28,10 @@ async function resolveProductPrices(
       promo_price: config.promo_price ?? null,
       promo_quantity: config.promo_quantity ?? null,
       product_config_id: config.id,
-      production_cost,
     };
   }
 
-  return { base_price: 0, promo_price: null, promo_quantity: null, product_config_id: null, production_cost };
+  return { base_price: 0, promo_price: null, promo_quantity: null, product_config_id: null };
 }
 
 export const ShipmentService = {
@@ -59,7 +54,6 @@ export const ShipmentService = {
           flavor: p.flavor,
           initial_quantity: p.initial_quantity,
           sold_quantity: 0,
-          production_cost: prices.production_cost,
           base_price: prices.base_price,
           promo_price: prices.promo_price,
           promo_quantity: prices.promo_quantity,
@@ -148,7 +142,6 @@ export const ShipmentService = {
         type: updates.type,
         flavor: updates.flavor,
         initial_quantity: updates.initial_quantity,
-        production_cost: updates.production_cost,
         base_price: updates.base_price,
         promo_price: updates.promo_price ?? null,
         promo_quantity: updates.promo_quantity ?? null,
@@ -168,7 +161,6 @@ export const ShipmentService = {
       flavor: product.flavor,
       initial_quantity: product.initial_quantity,
       sold_quantity: 0,
-      production_cost: prices.production_cost,
       base_price: prices.base_price,
       promo_price: prices.promo_price,
       promo_quantity: prices.promo_quantity,

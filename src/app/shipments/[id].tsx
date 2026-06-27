@@ -26,6 +26,8 @@ export default function ShipmentDetailsScreen() {
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteSaleModalVisible, setDeleteSaleModalVisible] = useState(false);
   const [saleToDelete, setSaleToDelete] = useState<Sale | null>(null);
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [saleToMark, setSaleToMark] = useState<Sale | null>(null);
   const [itemsShown, setItemsShown] = useState(10);
 
   const loadDetails = async () => {
@@ -59,6 +61,18 @@ export default function ShipmentDetailsScreen() {
       console.error('Erro ao excluir remessa:', error);
     } finally {
       setDeleteModalVisible(false);
+    }
+  };
+
+  const markAsPaid = async (sale: Sale) => {
+    try {
+      await SaleService.updateStatus(user!.id, sale.id, 'OK');
+      await loadDetails();
+      setPaymentModalVisible(false);
+      setSaleToMark(null);
+    } catch (error) {
+      console.error('Erro ao marcar venda como paga:', error);
+      alert('Erro ao registrar pagamento. Tente novamente.');
     }
   };
 
@@ -157,19 +171,13 @@ export default function ShipmentDetailsScreen() {
             {[1, 2].map(i => (
               <View key={i} style={[styles.produtoItem, i < 2 && { marginBottom: 12 }]}>
                 <View style={styles.produtoHeader}>
-                  <View style={styles.produtoInfo}>
-                    <SkeletonBlock width="65%" height={14} style={{ marginBottom: 4 }} />
-                    <SkeletonBlock width="40%" height={12} />
+                  <View style={styles.produtoLeft}>
+                    <SkeletonBlock width="50%" height={14} style={{ marginBottom: 6 }} />
+                    <SkeletonBlock width="30%" height={12} />
                   </View>
-                  <SkeletonBlock width={80} height={24} style={{ borderRadius: 12 }} />
+                  <SkeletonBlock width={100} height={36} style={{ borderRadius: 20 }} />
                 </View>
-                <View style={styles.produtoProgress}>
-                  <View style={styles.progressInfo}>
-                    <SkeletonBlock width="20%" height={13} />
-                    <SkeletonBlock width="15%" height={13} />
-                  </View>
-                  <SkeletonBlock width="100%" height={8} style={{ borderRadius: 4 }} />
-                </View>
+                <SkeletonBlock width="100%" height={8} style={{ borderRadius: 4, marginTop: 12 }} />
               </View>
             ))}
           </View>
@@ -244,57 +252,33 @@ export default function ShipmentDetailsScreen() {
             </View>
           </View>
 
-          {shipment.products?.map((product) => (
-            <View key={product.id} style={styles.produtoItem}>
-              <View style={styles.produtoHeader}>
-                <View style={styles.produtoInfo}>
-                  <Text style={styles.produtoNome}>
-                    {product.type} - {product.flavor}
-                  </Text>
-                  <Text style={styles.produtoCusto}>
-                    Custo: R$ {product.production_cost.toFixed(2)}
-                  </Text>
-                </View>
-                <View style={[
-                  styles.statusBadge,
-                  product.initial_quantity === product.sold_quantity
-                    ? styles.statusBadgeEsgotado
-                    : styles.statusBadgeDisponivel
-                ]}>
-                  <Text style={[
-                    styles.statusText,
-                    product.initial_quantity === product.sold_quantity
-                      ? styles.statusTextEsgotado
-                      : styles.statusTextDisponivel
-                  ]}>
-                    {product.initial_quantity === product.sold_quantity
-                      ? 'Esgotado'
-                      : `${product.initial_quantity - product.sold_quantity} disponíveis`
-                    }
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.produtoProgress}>
-                <View style={styles.progressInfo}>
-                  <Text style={styles.progressText}>
-                    {product.sold_quantity}/{product.initial_quantity}
-                  </Text>
-                  <Text style={styles.progressPercentage}>
-                    {((product.sold_quantity / product.initial_quantity) * 100).toFixed(0)}%
-                  </Text>
+          {[...(shipment.products ?? [])].sort((a, b) => (b.initial_quantity - b.sold_quantity) - (a.initial_quantity - a.sold_quantity)).map((product) => {
+            const available = product.initial_quantity - product.sold_quantity;
+            const isEsgotado = available <= 0;
+            const soldPercent = Math.round((product.sold_quantity / product.initial_quantity) * 100);
+            return (
+              <View key={product.id} style={[styles.produtoItem, isEsgotado ? styles.produtoItemEsgotado : styles.produtoItemDisponivel]}>
+                <View style={styles.produtoHeader}>
+                  <View style={styles.produtoLeft}>
+                    <Text style={styles.produtoNome}>{product.flavor}</Text>
+                    <Text style={styles.produtoTipo}>{product.type}</Text>
+                  </View>
+                  <View style={[styles.statusBadge, isEsgotado ? styles.statusBadgeEsgotado : styles.statusBadgeDisponivel]}>
+                    <Text style={[styles.statusText, isEsgotado ? styles.statusTextEsgotado : styles.statusTextDisponivel]}>
+                      {isEsgotado ? 'Esgotado' : `${available} disponíveis`}
+                    </Text>
+                  </View>
                 </View>
                 <View style={styles.progressContainer}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      { width: `${(product.sold_quantity / product.initial_quantity) * 100}%` }
-                    ]}
-                  />
+                  <View style={[styles.progressFill, { width: `${soldPercent}%` as any }]} />
+                  <View style={styles.progressOverlay}>
+                    <Text style={styles.progressLabelText}>{product.sold_quantity}/{product.initial_quantity}</Text>
+                    <Text style={styles.progressLabelText}>{soldPercent}%</Text>
+                  </View>
                 </View>
               </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
 
         {/* Vendas */}
@@ -320,6 +304,7 @@ export default function ShipmentDetailsScreen() {
                   setSaleToDelete(v);
                   setDeleteSaleModalVisible(true);
                 }}
+                onMarkAsPaid={(v) => { setSaleToMark(v); setPaymentModalVisible(true); }}
               />
             ))}
 
@@ -366,6 +351,17 @@ export default function ShipmentDetailsScreen() {
         secondaryAction={{ label: 'Cancelar', onPress: () => { setDeleteSaleModalVisible(false); setSaleToDelete(null); } }}>
         <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>
           Tem certeza que deseja excluir a venda de {saleToDelete?.customer_name}? Esta ação não pode ser desfeita.
+        </Text>
+      </ModernModal>
+
+      <ModernModal
+        visible={paymentModalVisible}
+        onClose={() => { setPaymentModalVisible(false); setSaleToMark(null); }}
+        title="Confirmar Pagamento"
+        primaryAction={{ label: 'Confirmar', onPress: () => { if (saleToMark) markAsPaid(saleToMark); } }}
+        secondaryAction={{ label: 'Cancelar', onPress: () => { setPaymentModalVisible(false); setSaleToMark(null); } }}>
+        <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>
+          Marcar a venda de R$ {(saleToMark?.total_price || 0).toFixed(2)} como paga?
         </Text>
       </ModernModal>
     </View>
@@ -485,68 +481,50 @@ const styles = StyleSheet.create({
   },
   produtoItem: {
     padding: 16,
-    backgroundColor: COLORS.softGray,
+    backgroundColor: COLORS.white,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: COLORS.borderGray,
+    borderLeftWidth: 4,
     marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  produtoItemDisponivel: {
+    borderLeftColor: COLORS.green,
+  },
+  produtoItemEsgotado: {
+    borderLeftColor: COLORS.error,
   },
   produtoHeader: {
-    marginBottom: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    gap: 12,
   },
-  produtoInfo: {
+  produtoLeft: {
     flex: 1,
+    marginRight: 12,
   },
   produtoNome: {
     fontSize: 14,
     fontWeight: 'bold',
     color: COLORS.textDark,
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  produtoCusto: {
+  produtoTipo: {
     fontSize: 12,
     color: COLORS.textMedium,
-  },
-  produtoProgress: {
-    marginBottom: 12,
-  },
-  progressInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  progressText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.textDark,
-  },
-  progressPercentage: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: COLORS.textDark,
-  },
-  progressContainer: {
-    height: 8,
-    backgroundColor: COLORS.borderGray,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: COLORS.mediumBlue,
-    borderRadius: 4,
+    marginTop: 2,
   },
   statusBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
     borderWidth: 1,
-    flexShrink: 1,
+    alignSelf: 'flex-start',
   },
   statusBadgeDisponivel: {
     backgroundColor: '#dcfce7',
@@ -557,7 +535,7 @@ const styles = StyleSheet.create({
     borderColor: '#dc2626',
   },
   statusText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: 'bold',
   },
   statusTextDisponivel: {
@@ -565,6 +543,40 @@ const styles = StyleSheet.create({
   },
   statusTextEsgotado: {
     color: '#dc2626',
+  },
+  progressContainer: {
+    height: 26,
+    backgroundColor: COLORS.borderGray,
+    borderRadius: 6,
+    overflow: 'hidden',
+    marginTop: 12,
+  },
+  progressFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    backgroundColor: COLORS.mediumBlue,
+    borderRadius: 6,
+  },
+  progressOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+  },
+  progressLabelText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: COLORS.white,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   vendasSection: {
     backgroundColor: COLORS.white,

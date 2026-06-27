@@ -43,7 +43,7 @@ export default function CustomerDetailsScreen() {
 
       const customerSales = await SaleService.getByCustomerId(user!.id, customerData.id);
 
-      const paidSales = customerSales.filter(v => v.status === 'OK');
+      const paidSales = customerSales.filter(v => v.status === 'PAGO');
       const pendingSales = customerSales.filter(v => v.status === 'PENDENTE');
 
       const firstPurchase = customerSales.length > 0 ?
@@ -69,7 +69,7 @@ export default function CustomerDetailsScreen() {
 
   const markAsPaid = async (sale: Sale) => {
     try {
-      await SaleService.updateStatus(user!.id, sale.id, 'OK');
+      await SaleService.updateStatus(user!.id, sale.id, 'PAGO');
       await loadCustomer();
       setPaymentModalVisible(false);
       setSaleToMark(null);

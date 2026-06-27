@@ -66,7 +66,7 @@ export default function ShipmentDetailsScreen() {
 
   const markAsPaid = async (sale: Sale) => {
     try {
-      await SaleService.updateStatus(user!.id, sale.id, 'OK');
+      await SaleService.updateStatus(user!.id, sale.id, 'PAGO');
       await loadDetails();
       setPaymentModalVisible(false);
       setSaleToMark(null);
@@ -111,7 +111,7 @@ export default function ShipmentDetailsScreen() {
 
   const getTotalValue = () => {
     return sales
-      .filter(sale => sale.status === 'OK')
+      .filter(sale => sale.status === 'PAGO')
       .reduce((total, sale) => total + sale.total_price, 0);
   };
 

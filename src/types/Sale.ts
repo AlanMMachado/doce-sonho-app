@@ -25,7 +25,7 @@ export interface Sale {
   customer_id: string;
   customer_name: string;
   date: string;
-  status: 'OK' | 'PENDENTE';
+  status: 'PAGO' | 'PENDENTE';
   payment_method?: string;
   total_price: number;
   items: SaleItem[];
@@ -35,7 +35,7 @@ export interface Sale {
 export interface SaleCreateParams {
   customer_name: string;
   date: string;
-  status: 'OK' | 'PENDENTE';
+  status: 'PAGO' | 'PENDENTE';
   payment_method?: string;
   items: Omit<SaleItem, 'id' | 'sale_id'>[];
 }
@@ -43,7 +43,7 @@ export interface SaleCreateParams {
 export interface SaleUpdateParams {
   customer_name?: string;
   date?: string;
-  status?: 'OK' | 'PENDENTE';
+  status?: 'PAGO' | 'PENDENTE';
   payment_method?: string;
   items?: Omit<SaleItem, 'id' | 'sale_id'>[];
 }

@@ -157,7 +157,7 @@ export const SaleService = {
     return data ? { ...data, items: data.items as SaleItem[] } : null;
   },
 
-  async updateStatus(userId: string, id: string, status: 'OK' | 'PENDENTE'): Promise<void> {
+  async updateStatus(userId: string, id: string, status: 'PAGO' | 'PENDENTE'): Promise<void> {
     const { error } = await supabase
       .from('sales')
       .update({ status })
@@ -237,7 +237,7 @@ export const SaleService = {
       .from('sales')
       .select('total_price')
       .eq('user_id', userId)
-      .eq('status', 'OK')
+      .eq('status', 'PAGO')
       .gte('date', start)
       .lte('date', end);
     return (data ?? []).reduce((s, v) => s + (v.total_price ?? 0), 0);

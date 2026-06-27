@@ -28,7 +28,7 @@ export default function EditSaleScreen() {
   const [items, setItems] = useState<SaleItemForm[]>([]);
   const [formData, setFormData] = useState({
     customer_name: '',
-    status: 'OK' as 'OK' | 'PENDENTE',
+    status: 'PENDENTE' as 'PAGO' | 'PENDENTE',
     payment_method: 'PIX'
   });
 
@@ -462,21 +462,6 @@ export default function EditSaleScreen() {
 
               <View style={styles.statusGrid}>
                 <TouchableOpacity
-                  onPress={() => setFormData({ ...formData, status: 'OK' })}
-                  style={[
-                    styles.statusButton,
-                    formData.status === 'OK' && styles.statusButtonPaid
-                  ]}
-                >
-                  <Text style={[
-                    styles.statusLabel,
-                    formData.status === 'OK' && styles.statusLabelActive
-                  ]}>
-                    Pago
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
                   onPress={() => setFormData({ ...formData, status: 'PENDENTE' })}
                   style={[
                     styles.statusButton,
@@ -488,6 +473,21 @@ export default function EditSaleScreen() {
                     formData.status === 'PENDENTE' && styles.statusLabelActive
                   ]}>
                     Pendente
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setFormData({ ...formData, status: 'PAGO' })}
+                  style={[
+                    styles.statusButton,
+                    formData.status === 'PAGO' && styles.statusButtonPaid
+                  ]}
+                >
+                  <Text style={[
+                    styles.statusLabel,
+                    formData.status === 'PAGO' && styles.statusLabelActive
+                  ]}>
+                    Pago
                   </Text>
                 </TouchableOpacity>
               </View>

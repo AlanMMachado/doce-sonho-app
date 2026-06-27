@@ -45,7 +45,7 @@ export const ReportService = {
     const productMap: Record<string, { quantity: number; totalValue: number }> = {};
 
     for (const sale of sales ?? []) {
-      if (sale.status === 'OK') totalSold += sale.total_price ?? 0;
+      if (sale.status === 'PAGO') totalSold += sale.total_price ?? 0;
       if (sale.status === 'PENDENTE') totalPending += sale.total_price ?? 0;
 
       for (const item of (sale.items as any[]) ?? []) {

@@ -82,7 +82,7 @@ export default function DashboardScreen() {
 
   const markAsPaid = async (sale: Sale) => {
     try {
-      await SaleService.updateStatus(user!.id, sale.id, 'OK');
+      await SaleService.updateStatus(user!.id, sale.id, 'PAGO');
       await loadData();
       setPaymentModalVisible(false);
       setSaleToMark(null);
@@ -148,7 +148,7 @@ export default function DashboardScreen() {
                 <Text style={styles.kpiLabel}>Total Vendido</Text>
                 <Text style={styles.kpiValue}>R$ {kpis.totalSold.toFixed(2)}</Text>
                 <Text style={styles.kpiSubtext}>
-                  {state.sales.filter(s => s.status === 'OK').length} vendas
+                  {state.sales.filter(s => s.status === 'PAGO').length} vendas
                 </Text>
               </View>
               <View style={styles.kpiCard}>

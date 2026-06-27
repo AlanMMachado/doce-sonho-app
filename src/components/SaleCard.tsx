@@ -28,7 +28,7 @@ export default function SaleCard({
   onDelete,
   onMarkAsPaid,
 }: SaleCardProps) {
-  const isPaid = sale.status === 'OK';
+  const isPaid = sale.status === 'PAGO';
 
   return (
     <View style={[styles.saleItem, isPaid ? styles.saleItemPaid : styles.saleItemPending]}>
@@ -64,7 +64,7 @@ export default function SaleCard({
         </View>
       </View>
 
-      {(showActions || onMarkAsPaid) && (
+      {(showActions || (sale.status === 'PENDENTE' && onMarkAsPaid)) && (
         <View style={styles.actionsRow}>
           {showActions && (
             <View style={styles.actionButtons}>

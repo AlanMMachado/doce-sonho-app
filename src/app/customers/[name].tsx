@@ -1,4 +1,5 @@
 import Header from '@/components/Header';
+import MetricCard, { MetricCardSkeleton } from '@/components/MetricCard';
 import ModernModal from '@/components/ModernModal';
 import SaleCard from '@/components/SaleCard';
 import SkeletonCard, { SkeletonBlock } from '@/components/SkeletonCard';
@@ -10,10 +11,10 @@ import { SaleService } from '@/service/saleService';
 import { Customer } from '@/types/Customer';
 import { Sale } from '@/types/Sale';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Clock, DollarSign, ShoppingCart, XCircle } from 'lucide-react-native';
+import { Clock, DollarSign, Edit, ShoppingCart, Trash2, XCircle } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { Text } from 'react-native-paper';
+import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Text, TextInput } from 'react-native-paper';
 
 type CustomerWithSales = Customer & {
   sales: Sale[];
@@ -29,6 +30,11 @@ export default function CustomerDetailsScreen() {
   const [customer, setCustomer] = useState<CustomerWithSales | null>(null);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [saleToMark, setSaleToMark] = useState<Sale | null>(null);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editError, setEditError] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
 
   const loadCustomer = async () => {
     try {
@@ -84,6 +90,36 @@ export default function CustomerDetailsScreen() {
     return 'Produto removido';
   };
 
+  const handleRename = async () => {
+    const trimmed = editName.trim();
+    if (!trimmed) { setEditError('Nome obrigatório'); return; }
+    if (trimmed === customer?.name) { setEditModalVisible(false); return; }
+    try {
+      setActionLoading(true);
+      await CustomerService.update(user!.id, customer!.id, { name: trimmed });
+      setEditModalVisible(false);
+      router.replace(`/customers/${encodeURIComponent(trimmed)}` as any);
+    } catch (e: any) {
+      setEditError(e.message ?? 'Erro ao renomear');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      setActionLoading(true);
+      await CustomerService.delete(user!.id, customer!.id);
+      router.back();
+    } catch (error) {
+      console.error('Erro ao excluir cliente:', error);
+      alert('Erro ao excluir cliente. Tente novamente.');
+    } finally {
+      setActionLoading(false);
+      setDeleteModalVisible(false);
+    }
+  };
+
   const calculateDaysSinceLastPurchase = () => {
     if (!customer?.last_purchase) return 0;
     const today = new Date();
@@ -96,7 +132,24 @@ export default function CustomerDetailsScreen() {
     <View style={styles.container}>
       <Header
         title="Histórico de compras"
-        subtitle={loading ? 'Carregando...' : !customer ? 'Não encontrado' : `${customer.purchase_count} compra${customer.purchase_count !== 1 ? 's' : ''}`}
+        actions={
+          !loading && customer ? (
+            <>
+              <TouchableOpacity
+                style={styles.headerEditButton}
+                onPress={() => { setEditName(customer.name); setEditError(''); setEditModalVisible(true); }}
+              >
+                <Edit size={20} color={COLORS.mediumBlue} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.headerDeleteButton}
+                onPress={() => setDeleteModalVisible(true)}
+              >
+                <Trash2 size={20} color={COLORS.error} />
+              </TouchableOpacity>
+            </>
+          ) : undefined
+        }
       />
 
       {loading ? (
@@ -110,21 +163,13 @@ export default function CustomerDetailsScreen() {
               <SkeletonBlock width={64} height={30} style={{ borderRadius: 16 }} />
             </View>
           </View>
-          <View style={styles.metricasContainer}>
-            <View style={styles.metricasRow}>
-              {[1, 2].map(i => (
-                <View key={i} style={styles.metricaCard}>
-                  <SkeletonBlock width={20} height={20} style={{ borderRadius: 10 }} />
-                  <SkeletonBlock width="55%" height={18} style={{ marginTop: 8, marginBottom: 4 }} />
-                  <SkeletonBlock width="75%" height={12} />
-                </View>
-              ))}
-            </View>
-            <View style={styles.metricaCardFull}>
-              <SkeletonBlock width={20} height={20} style={{ borderRadius: 10 }} />
-              <SkeletonBlock width="40%" height={18} style={{ marginTop: 8, marginBottom: 4 }} />
-              <SkeletonBlock width="50%" height={12} />
-            </View>
+          <View style={styles.metricsGrid}>
+            {[0, 1].map(row => (
+              <View key={row} style={styles.metricsRow}>
+                <MetricCardSkeleton style={{ flex: 1 }} />
+                <MetricCardSkeleton style={{ flex: 1 }} />
+              </View>
+            ))}
           </View>
           <View style={styles.historicoSection}>
             <SkeletonBlock width="50%" height={16} style={{ marginBottom: 16 }} />
@@ -148,8 +193,8 @@ export default function CustomerDetailsScreen() {
                 <View>
                   <Text style={styles.clienteNome}>{customer.name}</Text>
                   <Text style={styles.statusSubtitle}>
-                    {customer.status === 'devedor' ? 'Possui pendências de pagamento' :
-                     'Cliente em dia com pagamentos'}
+                    {customer.status === 'devedor' ? 'Possui pagamentos pendentes' :
+                     'Pagamentos em dia'}
                   </Text>
                 </View>
                 <View style={[
@@ -169,42 +214,42 @@ export default function CustomerDetailsScreen() {
               </View>
             </View>
 
-            {/* Métricas Principais */}
-            <View style={styles.metricasContainer}>
-              <View style={styles.metricasRow}>
-                <View style={styles.metricaCard}>
-                  <ShoppingCart size={20} color="#059669" />
-                  <Text style={styles.metricaValor}>{customer.purchase_count}</Text>
-                  <Text style={styles.metricaLabel}>Total de Compras</Text>
-                </View>
-
-                <View style={styles.metricaCard}>
-                  <Clock size={20} color="#ea580c" />
-                  <Text style={styles.metricaValor}>{calculateDaysSinceLastPurchase()}</Text>
-                  <Text style={styles.metricaLabel}>Dias Última Compra</Text>
-                </View>
+            {/* Métricas Principais — grid 2×2 */}
+            <View style={styles.metricsGrid}>
+              <View style={styles.metricsRow}>
+                <MetricCard
+                  icon={<ShoppingCart size={16} color={COLORS.mediumBlue} />}
+                  label="Total de Compras"
+                  value={`${customer.purchase_count}`}
+                  color={COLORS.mediumBlue}
+                  style={{ flex: 1 }}
+                />
+                <MetricCard
+                  icon={<Clock size={16} color="#ea580c" />}
+                  label="Última compra"
+                  value={`${calculateDaysSinceLastPurchase()} dias`}
+                  color="#ea580c"
+                  style={{ flex: 1 }}
+                />
               </View>
-
-              <View style={styles.metricaCardFull}>
-                <DollarSign size={20} color="#2563eb" />
-                <Text style={styles.metricaValor}>R$ {(customer.total_purchased || 0).toFixed(2)}</Text>
-                <Text style={styles.metricaLabel}>Total Comprado</Text>
+              <View style={styles.metricsRow}>
+                <MetricCard
+                  icon={<DollarSign size={16} color="#059669" />}
+                  label="Total Comprado"
+                  value={`R$ ${(customer.total_purchased || 0).toFixed(2)}`}
+                  color="#059669"
+                  style={{ flex: 1 }}
+                />
+                <MetricCard
+                  icon={<XCircle size={16} color={COLORS.error} />}
+                  label="Valor em Aberto"
+                  value={`R$ ${(customer.total_owed || 0).toFixed(2)}`}
+                  color={COLORS.error}
+                  subtitle={customer.pendingSales.length > 0 ? `${customer.pendingSales.length} pendente${customer.pendingSales.length !== 1 ? 's' : ''}` : undefined}
+                  style={{ flex: 1 }}
+                />
               </View>
             </View>
-
-            {/* Valor Devido (se houver) */}
-            {customer.total_owed > 0 && (
-              <View style={styles.dividaCard}>
-                <View style={styles.dividaHeader}>
-                  <XCircle size={20} color="#dc2626" />
-                  <Text style={styles.dividaTitle}>Valor em Aberto</Text>
-                </View>
-                <Text style={styles.dividaValor}>R$ {(customer.total_owed || 0).toFixed(2)}</Text>
-                <Text style={styles.dividaSubtext}>
-                  {customer.pendingSales.length} venda{customer.pendingSales.length !== 1 ? 's' : ''} pendente{customer.pendingSales.length !== 1 ? 's' : ''}
-                </Text>
-              </View>
-            )}
 
             {/* Histórico de Compras */}
             <View style={styles.historicoSection}>
@@ -235,6 +280,39 @@ export default function CustomerDetailsScreen() {
         secondaryAction={{ label: 'Cancelar', onPress: () => { setPaymentModalVisible(false); setSaleToMark(null); } }}>
         <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>
           Marcar a venda de R$ {(saleToMark?.total_price || 0).toFixed(2)} como paga?
+        </Text>
+      </ModernModal>
+
+      <ModernModal
+        centered
+        visible={editModalVisible}
+        onClose={() => setEditModalVisible(false)}
+        title="Editar Nome"
+        primaryAction={{ label: actionLoading ? 'Salvando...' : 'Salvar', onPress: handleRename }}
+        secondaryAction={{ label: 'Cancelar', onPress: () => setEditModalVisible(false) }}>
+        <TextInput
+          value={editName}
+          onChangeText={(t) => { setEditName(t); setEditError(''); }}
+          mode="outlined"
+          placeholder="Nome do cliente"
+          outlineColor={editError ? COLORS.error : COLORS.borderGray}
+          activeOutlineColor={editError ? COLORS.error : COLORS.mediumBlue}
+          style={{ backgroundColor: COLORS.white, marginBottom: 4 }}
+          autoFocus
+        />
+        {!!editError && (
+          <Text style={{ fontSize: 12, color: COLORS.error, marginTop: 4 }}>{editError}</Text>
+        )}
+      </ModernModal>
+
+      <ModernModal
+        visible={deleteModalVisible}
+        onClose={() => setDeleteModalVisible(false)}
+        title="Excluir Cliente"
+        primaryAction={{ label: 'Excluir', onPress: handleDelete, destructive: true }}
+        secondaryAction={{ label: 'Cancelar', onPress: () => setDeleteModalVisible(false) }}>
+        <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>
+          O perfil de {customer?.name} será removido permanentemente.{'\n\n'}As vendas anteriores continuarão acessíveis no histórico de cada remessa.
         </Text>
       </ModernModal>
     </View>
@@ -306,79 +384,63 @@ const styles = StyleSheet.create({
   },
   statusTextDevedor: {},
   statusTextEmDia: {},
-  metricasGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  headerEditButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: COLORS.softGray,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.mediumBlue,
+  },
+  headerDeleteButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: COLORS.softGray,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.error,
+  },
+  metricsGrid: {
     gap: 12,
     marginBottom: 16,
   },
-  metricasContainer: {
-    marginBottom: 16,
-  },
-  metricasRow: {
+  metricsRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 12,
   },
-  metricaCard: {
-    width: '48%',
+  accentCard: {
+    flex: 1,
     backgroundColor: COLORS.white,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: COLORS.borderGray,
+    borderLeftWidth: 4,
     padding: 16,
+  },
+  accentCardHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
   },
-  metricaCardFull: {
-    width: '100%',
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.borderGray,
-    padding: 16,
-    alignItems: 'center',
-  },
-  metricaValor: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.textDark,
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  metricaLabel: {
+  accentCardLabel: {
     fontSize: 12,
     color: COLORS.textMedium,
     fontWeight: '600',
-    textAlign: 'center',
+    flex: 1,
   },
-  dividaCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.error,
-    padding: 10,
-    marginBottom: 16,
-  },
-  dividaHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  dividaTitle: {
+  accentCardValue: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: COLORS.error,
-    marginLeft: 8,
   },
-  dividaValor: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.error,
-    marginBottom: 4,
-  },
-  dividaSubtext: {
-    fontSize: 13,
+  accentCardSubtitle: {
+    fontSize: 11,
     color: COLORS.textLight,
+    marginTop: 4,
   },
   historicoSection: {
     backgroundColor: COLORS.white,
@@ -386,7 +448,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.borderGray,
     padding: 20,
-    gap: 8,
   },
   sectionTitle: {
     fontSize: 16,

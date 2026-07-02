@@ -1,4 +1,5 @@
 import Header from '@/components/Header';
+import MetricCard, { MetricCardSkeleton } from '@/components/MetricCard';
 import ModernModal from '@/components/ModernModal';
 import SaleCard from '@/components/SaleCard';
 import SkeletonCard, { SkeletonBlock } from '@/components/SkeletonCard';
@@ -12,7 +13,7 @@ import { Shipment } from '@/types/Shipment';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Edit, Trash2, XCircle } from 'lucide-react-native';
+import { Archive, DollarSign, Edit, Package, ShoppingCart, Trash2, XCircle } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
@@ -155,14 +156,12 @@ export default function ShipmentDetailsScreen() {
       {loading ? (
         <ScrollView style={styles.content} scrollEnabled={false}>
           <View style={styles.kpisGrid}>
-            {[1, 2, 3, 4].map(i => (
-              <View key={i} style={styles.kpiCard}>
-                <SkeletonBlock width="60%" height={12} style={{ marginBottom: 4 }} />
-                <SkeletonBlock width="70%" height={24} style={{ marginBottom: 4 }} />
-                <SkeletonBlock width="40%" height={11} />
-              </View>
-            ))}
+            <MetricCardSkeleton style={{ width: '48%' }} />
+            <MetricCardSkeleton style={{ width: '48%' }} />
+            <MetricCardSkeleton style={{ width: '48%' }} />
+            <MetricCardSkeleton style={{ width: '48%' }} />
           </View>
+          <MetricCardSkeleton style={{ marginBottom: 16 }} />
           <View style={styles.produtosSection}>
             <View style={styles.sectionHeader}>
               <SkeletonBlock width="35%" height={16} />
@@ -204,44 +203,49 @@ export default function ShipmentDetailsScreen() {
 
         {/* KPIs */}
         <View style={styles.kpisGrid}>
-          <View style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>Total Inicial</Text>
-            <Text style={styles.kpiValue}>{getTotalInitial()}</Text>
-            <Text style={styles.kpiSubtext}>unidades</Text>
-          </View>
-
-          <View style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>Vendido</Text>
-            <Text style={styles.kpiValue}>{getTotalSold()}</Text>
-            <Text style={styles.kpiSubtext}>unidades</Text>
-          </View>
-
-          <View style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>Disponível</Text>
-            <Text style={styles.kpiValue}>{getTotalInitial() - getTotalSold()}</Text>
-            <Text style={styles.kpiSubtext}>unidades</Text>
-          </View>
-
-          <View style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>Faturamento</Text>
-            <Text style={styles.kpiValue}>R$ {getTotalValue().toFixed(0)}</Text>
-            <Text style={styles.kpiSubtext}>recebido</Text>
-          </View>
+          <MetricCard
+            icon={<Package size={16} color={COLORS.mediumBlue} />}
+            label="Total Inicial"
+            value={`${getTotalInitial()}`}
+            color={COLORS.mediumBlue}
+            subtitle="unidades"
+            style={{ width: '48%' }}
+          />
+          <MetricCard
+            icon={<Archive size={16} color="#ea580c" />}
+            label="Disponível"
+            value={`${getTotalInitial() - getTotalSold()}`}
+            color="#ea580c"
+            subtitle="unidades"
+            style={{ width: '48%' }}
+          />
+          <MetricCard
+            icon={<ShoppingCart size={16} color="#059669" />}
+            label="Vendido"
+            value={`${getTotalSold()}`}
+            color="#059669"
+            subtitle="unidades"
+            style={{ width: '48%' }}
+          />
+          <MetricCard
+            icon={<DollarSign size={16} color="#059669" />}
+            label="Faturamento"
+            value={`R$ ${getTotalValue().toFixed(0)}`}
+            color="#059669"
+            subtitle="recebido"
+            style={{ width: '48%' }}
+          />
         </View>
 
-        {/* Valor Pendente (se houver) */}
-        {getPendingValue() > 0 && (
-          <View style={styles.dividaCard}>
-            <View style={styles.dividaHeader}>
-              <XCircle size={20} color="#dc2626" />
-              <Text style={styles.dividaTitle}>Valor Pendente</Text>
-            </View>
-            <Text style={styles.dividaValor}>R$ {getPendingValue().toFixed(2)}</Text>
-            <Text style={styles.dividaSubtext}>
-              {sales.filter(v => v.status === 'PENDENTE').length} venda{sales.filter(v => v.status === 'PENDENTE').length !== 1 ? 's' : ''} pendente{sales.filter(v => v.status === 'PENDENTE').length !== 1 ? 's' : ''}
-            </Text>
-          </View>
-        )}
+        {/* Valor Pendente — sempre visível */}
+        <MetricCard
+          icon={<XCircle size={16} color={COLORS.error} />}
+          label="Valor Pendente"
+          value={`R$ ${getPendingValue().toFixed(2)}`}
+          color={COLORS.error}
+          subtitle={`${sales.filter(v => v.status === 'PENDENTE').length} venda${sales.filter(v => v.status === 'PENDENTE').length !== 1 ? 's' : ''} pendente${sales.filter(v => v.status === 'PENDENTE').length !== 1 ? 's' : ''}`}
+          style={{ marginBottom: 16 }}
+        />
 
         {/* Produtos */}
         <View style={styles.produtosSection}>
@@ -423,30 +427,6 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 16,
   },
-  kpiCard: {
-    width: '48%',
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.borderGray,
-    padding: 16,
-  },
-  kpiLabel: {
-    fontSize: 12,
-    color: COLORS.textMedium,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  kpiValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.textDark,
-    marginBottom: 4,
-  },
-  kpiSubtext: {
-    fontSize: 11,
-    color: COLORS.textLight,
-  },
   produtosSection: {
     backgroundColor: COLORS.white,
     borderRadius: 12,
@@ -585,7 +565,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.borderGray,
     padding: 20,
     marginBottom: 16,
-    gap: 8,
   },
   maisVendas: {
     textAlign: 'center',
@@ -687,34 +666,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.error,
-  },
-  dividaCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.error,
-    padding: 10,
-    marginBottom: 16,
-  },
-  dividaHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  dividaTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.error,
-    marginLeft: 8,
-  },
-  dividaValor: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.error,
-    marginBottom: 4,
-  },
-  dividaSubtext: {
-    fontSize: 13,
-    color: COLORS.textLight,
   },
 });

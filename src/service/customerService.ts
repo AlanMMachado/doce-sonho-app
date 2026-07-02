@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { Customer, CustomerCreateParams } from '../types/Customer';
+import { Customer, CustomerCreateParams, CustomerUpdateParams } from '../types/Customer';
 
 export const CustomerService = {
   async upsertByName(userId: string, name: string): Promise<Customer> {
@@ -62,6 +62,25 @@ export const CustomerService = {
       .order('name');
     if (error) throw error;
     return data ?? [];
+  },
+
+  async update(userId: string, id: string, params: CustomerUpdateParams): Promise<void> {
+    const { error } = await supabase
+      .from('customers')
+      .update({ name: params.name })
+      .eq('user_id', userId)
+      .eq('id', id);
+    if (error) {
+      if (error.code === '23505') throw new Error('Já existe um cliente com esse nome');
+      throw error;
+    }
+    if (params.name) {
+      await supabase
+        .from('sales')
+        .update({ customer_name: params.name })
+        .eq('user_id', userId)
+        .eq('customer_id', id);
+    }
   },
 
   async delete(userId: string, id: string): Promise<void> {

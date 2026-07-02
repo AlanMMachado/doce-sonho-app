@@ -98,7 +98,7 @@ export default function SaleCard({
 }
 
 const styles = StyleSheet.create({
-  saleItem: { paddingVertical: 12, paddingHorizontal: 16, backgroundColor: COLORS.white, borderRadius: 8, borderWidth: 1, borderColor: COLORS.borderGray, borderLeftWidth: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 },
+  saleItem: { paddingVertical: 12, paddingHorizontal: 16, backgroundColor: COLORS.white, borderRadius: 8, borderWidth: 1, borderColor: COLORS.borderGray, borderLeftWidth: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2, marginBottom: 12 },
   saleItemPaid: { borderLeftColor: COLORS.green },
   saleItemPending: { borderLeftColor: COLORS.warning },
   saleContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },

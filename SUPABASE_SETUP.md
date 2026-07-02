@@ -1,7 +1,7 @@
 ```sql
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- ── Função auxiliar: atualiza updated_at automaticamente ──────────────────
+-- ── Helper: auto-update updated_at ───────────────────────────────────────────
 
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$
@@ -11,112 +11,112 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- ── Tabelas ───────────────────────────────────────────────────────────────
+-- ── Tables ────────────────────────────────────────────────────────────────────
 
-CREATE TABLE produto_configs (
-  id                  UUID         DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id             UUID         REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  tipo                TEXT         NOT NULL,
-  tipo_customizado    TEXT,
-  preco_base          DECIMAL(10,2) NOT NULL,
-  preco_promocao      DECIMAL(10,2),
-  quantidade_promocao INTEGER,
-  ativo               BOOLEAN      DEFAULT true,
-  created_at          TIMESTAMPTZ  DEFAULT now(),
-  updated_at          TIMESTAMPTZ  DEFAULT now()
+CREATE TABLE product_configs (
+  id              UUID          DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id         UUID          REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  type            TEXT          NOT NULL,
+  custom_type     TEXT,
+  base_price      DECIMAL(10,2) NOT NULL,
+  promo_price     DECIMAL(10,2),
+  promo_quantity  INTEGER,
+  active          BOOLEAN       DEFAULT true,
+  created_at      TIMESTAMPTZ   DEFAULT now(),
+  updated_at      TIMESTAMPTZ   DEFAULT now()
 );
 
-CREATE TABLE remessas (
-  id         UUID         DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id    UUID         REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  data       TEXT         NOT NULL,
-  observacao TEXT,
-  ativa      BOOLEAN      DEFAULT true,
-  created_at TIMESTAMPTZ  DEFAULT now(),
-  updated_at TIMESTAMPTZ  DEFAULT now()
+CREATE TABLE shipments (
+  id         UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id    UUID        REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  date       TEXT        NOT NULL,
+  notes      TEXT,
+  active     BOOLEAN     DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE TABLE produtos (
-  id                  UUID         DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id             UUID         REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  remessa_id          UUID         REFERENCES remessas(id) ON DELETE CASCADE NOT NULL,
-  produto_config_id   UUID         REFERENCES produto_configs(id) ON DELETE SET NULL,
-  tipo                TEXT         NOT NULL,
-  sabor               TEXT         NOT NULL,
-  quantidade_inicial  INTEGER      NOT NULL DEFAULT 0,
-  quantidade_vendida  INTEGER      NOT NULL DEFAULT 0, -- atualizado por trigger
-  custo_producao      DECIMAL(10,2) NOT NULL DEFAULT 0,
-  preco_base          DECIMAL(10,2) NOT NULL DEFAULT 0,
-  preco_promocao      DECIMAL(10,2),
-  quantidade_promocao INTEGER,
-  created_at          TIMESTAMPTZ  DEFAULT now(),
-  updated_at          TIMESTAMPTZ  DEFAULT now()
+CREATE TABLE products (
+  id                UUID          DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id           UUID          REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  shipment_id       UUID          REFERENCES shipments(id) ON DELETE CASCADE NOT NULL,
+  product_config_id UUID          REFERENCES product_configs(id) ON DELETE SET NULL,
+  type              TEXT          NOT NULL,
+  flavor            TEXT          NOT NULL,
+  initial_quantity  INTEGER       NOT NULL DEFAULT 0,
+  sold_quantity     INTEGER       NOT NULL DEFAULT 0, -- maintained by trigger
+  production_cost   DECIMAL(10,2) NOT NULL DEFAULT 0,
+  base_price        DECIMAL(10,2) NOT NULL DEFAULT 0,
+  promo_price       DECIMAL(10,2),
+  promo_quantity    INTEGER,
+  created_at        TIMESTAMPTZ   DEFAULT now(),
+  updated_at        TIMESTAMPTZ   DEFAULT now()
 );
 
-CREATE TABLE clientes (
-  id             UUID         DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id        UUID         REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  nome           TEXT         NOT NULL,
-  total_comprado DECIMAL(10,2) NOT NULL DEFAULT 0,  -- atualizado por trigger
-  total_devido   DECIMAL(10,2) NOT NULL DEFAULT 0,  -- atualizado por trigger
-  numero_compras INTEGER      NOT NULL DEFAULT 0,   -- atualizado por trigger
-  ultima_compra  TEXT,                               -- atualizado por trigger
-  status         TEXT         NOT NULL DEFAULT 'em_dia'
-                   CHECK (status IN ('devedor', 'em_dia')),  -- atualizado por trigger
-  data_cadastro  TEXT         NOT NULL,
-  created_at     TIMESTAMPTZ  DEFAULT now(),
-  updated_at     TIMESTAMPTZ  DEFAULT now(),
-  UNIQUE (user_id, nome)
+CREATE TABLE customers (
+  id              UUID          DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id         UUID          REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  name            TEXT          NOT NULL,
+  total_purchased DECIMAL(10,2) NOT NULL DEFAULT 0,  -- maintained by trigger
+  total_owed      DECIMAL(10,2) NOT NULL DEFAULT 0,  -- maintained by trigger
+  purchase_count  INTEGER       NOT NULL DEFAULT 0,  -- maintained by trigger
+  last_purchase   TEXT,                               -- maintained by trigger
+  status          TEXT          NOT NULL DEFAULT 'em_dia'
+                    CHECK (status IN ('devedor', 'em_dia')),  -- maintained by trigger
+  registered_at   TEXT          NOT NULL,
+  created_at      TIMESTAMPTZ   DEFAULT now(),
+  updated_at      TIMESTAMPTZ   DEFAULT now(),
+  UNIQUE (user_id, name)
 );
 
-CREATE TABLE vendas (
-  id               UUID         DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id          UUID         REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  cliente_id       UUID         REFERENCES clientes(id) ON DELETE RESTRICT NOT NULL,
-  cliente_nome     TEXT         NOT NULL, -- snapshot do nome no momento da venda
-  data             TEXT         NOT NULL,
-  status           TEXT         NOT NULL DEFAULT 'OK'
-                     CHECK (status IN ('OK', 'PENDENTE')),
-  metodo_pagamento TEXT,
-  total_preco      DECIMAL(10,2) NOT NULL,
-  created_at       TIMESTAMPTZ  DEFAULT now(),
-  updated_at       TIMESTAMPTZ  DEFAULT now()
+CREATE TABLE sales (
+  id              UUID          DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id         UUID          REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  customer_id     UUID          REFERENCES customers(id) ON DELETE RESTRICT NOT NULL,
+  customer_name   TEXT          NOT NULL, -- snapshot of name at sale time
+  date            TEXT          NOT NULL,
+  status          TEXT          NOT NULL DEFAULT 'OK'
+                    CHECK (status IN ('OK', 'PENDENTE')),
+  payment_method  TEXT,
+  total_price     DECIMAL(10,2) NOT NULL,
+  created_at      TIMESTAMPTZ   DEFAULT now(),
+  updated_at      TIMESTAMPTZ   DEFAULT now()
 );
 
-CREATE TABLE itens_venda (
-  id            UUID         DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id       UUID         REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  venda_id      UUID         REFERENCES vendas(id) ON DELETE CASCADE NOT NULL,
-  produto_id    UUID         REFERENCES produtos(id) ON DELETE SET NULL,
-  produto_tipo  TEXT,         -- snapshot histórico
-  produto_sabor TEXT,         -- snapshot histórico
-  quantidade    INTEGER      NOT NULL,
-  preco_base    DECIMAL(10,2) NOT NULL,
-  preco_promocao DECIMAL(10,2),
+CREATE TABLE sale_items (
+  id            UUID          DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id       UUID          REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  sale_id       UUID          REFERENCES sales(id) ON DELETE CASCADE NOT NULL,
+  product_id    UUID          REFERENCES products(id) ON DELETE SET NULL,
+  product_type  TEXT,          -- historical snapshot
+  product_flavor TEXT,         -- historical snapshot
+  quantity      INTEGER       NOT NULL,
+  base_price    DECIMAL(10,2) NOT NULL,
+  promo_price   DECIMAL(10,2),
   subtotal      DECIMAL(10,2) NOT NULL,
-  created_at    TIMESTAMPTZ  DEFAULT now(),
-  updated_at    TIMESTAMPTZ  DEFAULT now()
+  created_at    TIMESTAMPTZ   DEFAULT now(),
+  updated_at    TIMESTAMPTZ   DEFAULT now()
 );
 
-CREATE TABLE perfil (
-  id               UUID          DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id          UUID          REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL UNIQUE,
-  nome_completo    TEXT          NOT NULL,
-  email            TEXT          NOT NULL,
-  data_nascimento  TEXT          NOT NULL,
-  meta_diaria      DECIMAL(10,2) NOT NULL DEFAULT 200.00,
-  created_at       TIMESTAMPTZ   DEFAULT now(),
-  updated_at       TIMESTAMPTZ   DEFAULT now()
+CREATE TABLE profiles (
+  id          UUID          DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id     UUID          REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL UNIQUE,
+  full_name   TEXT          NOT NULL,
+  email       TEXT          NOT NULL,
+  birth_date  TEXT          NOT NULL,
+  daily_goal  DECIMAL(10,2) NOT NULL DEFAULT 200.00,
+  created_at  TIMESTAMPTZ   DEFAULT now(),
+  updated_at  TIMESTAMPTZ   DEFAULT now()
 );
 
--- ── Triggers de updated_at (todas as tabelas) ─────────────────────────────
+-- ── updated_at triggers (all tables) ─────────────────────────────────────────
 
 DO $$
 DECLARE t TEXT;
 BEGIN
   FOREACH t IN ARRAY ARRAY[
-    'produto_configs','remessas','produtos',
-    'clientes','vendas','itens_venda'
+    'product_configs','shipments','products',
+    'customers','sales','sale_items'
   ]
   LOOP
     EXECUTE format(
@@ -128,91 +128,89 @@ BEGIN
   END LOOP;
 END $$;
 
-CREATE TRIGGER trg_perfil_updated_at
-BEFORE UPDATE ON perfil
+CREATE TRIGGER trg_profiles_updated_at
+BEFORE UPDATE ON profiles
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
--- ── Trigger: quantidade_vendida em produtos ───────────────────────────────
--- Mantém produtos.quantidade_vendida sincronizado com os itens inseridos/
--- atualizados/removidos em itens_venda. O app nunca precisa atualizar
--- esse campo manualmente.
+-- ── Trigger: keep products.sold_quantity in sync ──────────────────────────────
+-- Automatically increments/decrements sold_quantity whenever sale_items change.
+-- The app never needs to update this field manually.
 
-CREATE OR REPLACE FUNCTION trg_atualizar_quantidade_vendida()
+CREATE OR REPLACE FUNCTION update_sold_quantity()
 RETURNS TRIGGER AS $$
 BEGIN
   IF TG_OP = 'INSERT' THEN
-    UPDATE produtos
-    SET quantidade_vendida = quantidade_vendida + NEW.quantidade
-    WHERE id = NEW.produto_id;
+    UPDATE products
+    SET sold_quantity = sold_quantity + NEW.quantity
+    WHERE id = NEW.product_id;
 
   ELSIF TG_OP = 'DELETE' THEN
-    UPDATE produtos
-    SET quantidade_vendida = GREATEST(0, quantidade_vendida - OLD.quantidade)
-    WHERE id = OLD.produto_id;
+    UPDATE products
+    SET sold_quantity = GREATEST(0, sold_quantity - OLD.quantity)
+    WHERE id = OLD.product_id;
 
-  ELSIF TG_OP = 'UPDATE' AND NEW.produto_id = OLD.produto_id THEN
-    UPDATE produtos
-    SET quantidade_vendida = GREATEST(0, quantidade_vendida - OLD.quantidade + NEW.quantidade)
-    WHERE id = NEW.produto_id;
+  ELSIF TG_OP = 'UPDATE' AND NEW.product_id = OLD.product_id THEN
+    UPDATE products
+    SET sold_quantity = GREATEST(0, sold_quantity - OLD.quantity + NEW.quantity)
+    WHERE id = NEW.product_id;
   END IF;
 
   RETURN COALESCE(NEW, OLD);
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_itens_quantidade
-AFTER INSERT OR UPDATE OR DELETE ON itens_venda
-FOR EACH ROW EXECUTE FUNCTION trg_atualizar_quantidade_vendida();
+CREATE TRIGGER trg_sale_items_quantity
+AFTER INSERT OR UPDATE OR DELETE ON sale_items
+FOR EACH ROW EXECUTE FUNCTION update_sold_quantity();
 
--- ── Trigger: agregados de clientes ───────────────────────────────────────
--- Recalcula total_comprado, total_devido, numero_compras, ultima_compra e
--- status em clientes sempre que uma venda é inserida, atualizada ou removida.
--- Elimina a necessidade do syncService no app.
+-- ── Trigger: keep customer aggregates in sync ─────────────────────────────────
+-- Recalculates total_purchased, total_owed, purchase_count, last_purchase and
+-- status on customers whenever a sale is inserted, updated or deleted.
 
-CREATE OR REPLACE FUNCTION trg_atualizar_totais_cliente()
+CREATE OR REPLACE FUNCTION update_customer_totals()
 RETURNS TRIGGER AS $$
-DECLARE v_cliente_id UUID;
+DECLARE v_customer_id UUID;
 BEGIN
-  v_cliente_id := COALESCE(NEW.cliente_id, OLD.cliente_id);
+  v_customer_id := COALESCE(NEW.customer_id, OLD.customer_id);
 
-  UPDATE clientes SET
-    total_comprado = COALESCE(
-      (SELECT SUM(total_preco) FROM vendas WHERE cliente_id = v_cliente_id), 0
+  UPDATE customers SET
+    total_purchased = COALESCE(
+      (SELECT SUM(total_price) FROM sales WHERE customer_id = v_customer_id), 0
     ),
-    total_devido = COALESCE(
-      (SELECT SUM(total_preco) FROM vendas WHERE cliente_id = v_cliente_id AND status = 'PENDENTE'), 0
+    total_owed = COALESCE(
+      (SELECT SUM(total_price) FROM sales WHERE customer_id = v_customer_id AND status = 'PENDENTE'), 0
     ),
-    numero_compras = (
-      SELECT COUNT(*) FROM vendas WHERE cliente_id = v_cliente_id
+    purchase_count = (
+      SELECT COUNT(*) FROM sales WHERE customer_id = v_customer_id
     ),
-    ultima_compra = (
-      SELECT MAX(data) FROM vendas WHERE cliente_id = v_cliente_id
+    last_purchase = (
+      SELECT MAX(date) FROM sales WHERE customer_id = v_customer_id
     ),
     status = CASE
       WHEN COALESCE(
-        (SELECT SUM(total_preco) FROM vendas WHERE cliente_id = v_cliente_id AND status = 'PENDENTE'), 0
+        (SELECT SUM(total_price) FROM sales WHERE customer_id = v_customer_id AND status = 'PENDENTE'), 0
       ) > 0 THEN 'devedor'
       ELSE 'em_dia'
     END
-  WHERE id = v_cliente_id;
+  WHERE id = v_customer_id;
 
   RETURN COALESCE(NEW, OLD);
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_vendas_cliente_totais
-AFTER INSERT OR UPDATE OR DELETE ON vendas
-FOR EACH ROW EXECUTE FUNCTION trg_atualizar_totais_cliente();
+CREATE TRIGGER trg_sales_customer_totals
+AFTER INSERT OR UPDATE OR DELETE ON sales
+FOR EACH ROW EXECUTE FUNCTION update_customer_totals();
 
--- ── Row Level Security ────────────────────────────────────────────────────
--- Cada usuário só lê e escreve os próprios dados.
+-- ── Row Level Security ────────────────────────────────────────────────────────
+-- Each user reads and writes only their own data.
 
 DO $$
 DECLARE t TEXT;
 BEGIN
   FOREACH t IN ARRAY ARRAY[
-    'produto_configs','remessas','produtos',
-    'clientes','vendas','itens_venda'
+    'product_configs','shipments','products',
+    'customers','sales','sale_items'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
@@ -223,23 +221,23 @@ BEGIN
   END LOOP;
 END $$;
 
-ALTER TABLE perfil ENABLE ROW LEVEL SECURITY;
-CREATE POLICY own_data ON perfil FOR ALL USING (auth.uid() = user_id);
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY own_data ON profiles FOR ALL USING (auth.uid() = user_id);
 ```
 
 ---
 
-## O que cada parte faz
+## Table reference
 
-| Componente | Responsabilidade |
+| Table | Responsibility |
 |---|---|
-| `produto_configs` | Templates de preço por tipo/sabor |
-| `remessas` | Lotes de produção |
-| `produtos` | Itens de cada remessa (quantidades, preços) |
-| `clientes` | Cadastro de clientes com totais calculados |
-| `vendas` | Registro de vendas com FK para cliente |
-| `itens_venda` | Linhas de cada venda (produto, quantidade, subtotal) |
-| `perfil` | Dados pessoais e meta diária do usuário |
-| `trg_itens_quantidade` | Mantém `produtos.quantidade_vendida` automático |
-| `trg_vendas_cliente_totais` | Mantém agregados de `clientes` automáticos |
-| RLS `own_data` | Isola dados de cada usuário via JWT |
+| `product_configs` | Pricing templates per type/flavor |
+| `shipments` | Production batches |
+| `products` | Items in each shipment (quantities, prices) |
+| `customers` | Customer registry with computed totals |
+| `sales` | Sale records linked to a customer |
+| `sale_items` | Line items per sale (product, quantity, subtotal) |
+| `profiles` | User personal info and daily goal |
+| `update_sold_quantity` | Keeps `products.sold_quantity` automatic |
+| `update_customer_totals` | Keeps `customers` aggregates automatic |
+| RLS `own_data` | Isolates each user's data via JWT |

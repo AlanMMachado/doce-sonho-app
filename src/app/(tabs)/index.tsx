@@ -2,7 +2,7 @@ import ConfigMenuButton from '@/components/ConfigMenuButton';
 import Header from '@/components/Header';
 import ModernModal from '@/components/ModernModal';
 import SaleCard from '@/components/SaleCard';
-import SkeletonCard, { SkeletonBlock } from '@/components/SkeletonCard';
+import { SkeletonBlock } from '@/components/SkeletonCard';
 import { COLORS } from '@/constants/Colors';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -133,8 +133,23 @@ export default function DashboardScreen() {
               <SkeletonBlock width="45%" height={16} />
               <SkeletonBlock width={30} height={22} style={{ borderRadius: 12 }} />
             </View>
-            <SkeletonCard lines={3} />
-            <SkeletonCard lines={3} style={{ marginTop: 12 }} />
+            <View>
+              {[1, 2, 3].map(i => (
+                <View key={i} style={styles.skeletonSaleItem}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <View style={{ flex: 1 }}>
+                      <SkeletonBlock width="55%" height={14} style={{ marginBottom: 6 }} />
+                      <SkeletonBlock width="75%" height={12} style={{ marginBottom: 4 }} />
+                      <SkeletonBlock width="35%" height={11} style={{ marginTop: 4 }} />
+                    </View>
+                    <View style={{ alignItems: 'flex-end', marginLeft: 12 }}>
+                      <SkeletonBlock width={70} height={15} style={{ marginBottom: 4 }} />
+                      <SkeletonBlock width={55} height={11} />
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
           </View>
         </ScrollView>
       ) : (
@@ -198,7 +213,7 @@ export default function DashboardScreen() {
                   <Text style={styles.emptySubtext}>Registre sua primeira venda</Text>
                 </View>
               ) : (
-                <View style={styles.salesList}>
+                <View>
                   {state.sales.map((sale) => (
                     <SaleCard
                       key={sale.id}
@@ -266,5 +281,5 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 48, marginBottom: 12 },
   emptyText: { fontSize: 15, fontWeight: '600', color: COLORS.textDark, marginBottom: 4 },
   emptySubtext: { fontSize: 13, color: COLORS.textMedium },
-  salesList: { gap: 12 },
+  skeletonSaleItem: { paddingVertical: 12, paddingHorizontal: 16, backgroundColor: COLORS.white, borderRadius: 8, borderWidth: 1, borderColor: COLORS.borderGray, borderLeftWidth: 4, borderLeftColor: COLORS.borderGray, marginBottom: 12 },
 });

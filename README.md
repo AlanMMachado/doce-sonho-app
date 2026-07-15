@@ -1,4 +1,4 @@
-# Doce Sonho - Aplicatiov para Gerenciamento de Vendas
+# Doce Sonho - App para Gerenciamento de Vendas
 
 Aplicativo mobile para gerenciamento de vendas de trufas e sobremesas, desenvolvido com React Native e Expo.
 
@@ -27,25 +27,5 @@ Aplicativo mobile para gerenciamento de vendas de trufas e sobremesas, desenvolv
 - Produtos mais vendidos
 - Total de vendas, pendente e lucro
 - Quantidade de produtos vendidos
-
-## Estrutura do Projeto
-
-```
-src/
-├── app/                    # Telas e navegação
-│   ├── (tabs)/            # Telas principais com navegação por abas
-│   │   ├── dashboard.tsx  # Dashboard com KPIs
-│   │   ├── remessas.tsx   # Listagem de remessas
-│   │   └── relatorios.tsx # Análise de relatórios
-│   ├── vendas/nova.tsx    # Formulário de nova venda
-│   ├── remessas/nova.tsx  # Formulário de nova remessa
-│   └── remessas/[id].tsx  # Detalhes da remessa
-├── components/            # Componentes reutilizáveis
-├── contexts/             # Context API para state management
-├── database/             # Configuração do SQLite
-├── service/              # Serviços de dados
-├── types/                # Tipos TypeScript
-└── constants/            # Constantes e temas
-```
 
 EM DESENVOLVIMENTO...

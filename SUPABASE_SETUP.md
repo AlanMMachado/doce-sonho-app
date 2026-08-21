@@ -75,10 +75,11 @@ CREATE TABLE sales (
   customer_id     UUID          REFERENCES customers(id) ON DELETE RESTRICT NOT NULL,
   customer_name   TEXT          NOT NULL, -- snapshot of name at sale time
   date            TEXT          NOT NULL,
-  status          TEXT          NOT NULL DEFAULT 'OK'
-                    CHECK (status IN ('OK', 'PENDENTE')),
+  status          TEXT          NOT NULL DEFAULT 'PAGO'
+                    CHECK (status IN ('PAGO', 'PENDENTE')),
   payment_method  TEXT,
   total_price     DECIMAL(10,2) NOT NULL,
+  amount_paid     DECIMAL(10,2) NOT NULL DEFAULT 0, -- parcial quando status = 'PENDENTE' AND amount_paid > 0
   created_at      TIMESTAMPTZ   DEFAULT now(),
   updated_at      TIMESTAMPTZ   DEFAULT now()
 );
@@ -178,7 +179,7 @@ BEGIN
       (SELECT SUM(total_price) FROM sales WHERE customer_id = v_customer_id), 0
     ),
     total_owed = COALESCE(
-      (SELECT SUM(total_price) FROM sales WHERE customer_id = v_customer_id AND status = 'PENDENTE'), 0
+      (SELECT SUM(total_price - amount_paid) FROM sales WHERE customer_id = v_customer_id AND status = 'PENDENTE'), 0
     ),
     purchase_count = (
       SELECT COUNT(*) FROM sales WHERE customer_id = v_customer_id
@@ -188,7 +189,7 @@ BEGIN
     ),
     status = CASE
       WHEN COALESCE(
-        (SELECT SUM(total_price) FROM sales WHERE customer_id = v_customer_id AND status = 'PENDENTE'), 0
+        (SELECT SUM(total_price - amount_paid) FROM sales WHERE customer_id = v_customer_id AND status = 'PENDENTE'), 0
       ) > 0 THEN 'devedor'
       ELSE 'em_dia'
     END
@@ -201,6 +202,79 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trg_sales_customer_totals
 AFTER INSERT OR UPDATE OR DELETE ON sales
 FOR EACH ROW EXECUTE FUNCTION update_customer_totals();
+
+-- ── Function: allocate a partial payment across a customer's oldest sales ─────
+-- Applies p_amount against the customer's PENDENTE sales, oldest-first, paying
+-- each in full until the amount runs out; the last sale touched may end up
+-- partially paid (status stays 'PENDENTE', amount_paid < total_price). Runs as
+-- SECURITY INVOKER (default) so the caller's RLS policy on `sales` still applies.
+
+CREATE OR REPLACE FUNCTION apply_partial_payment(
+  p_user_id UUID,
+  p_customer_id UUID,
+  p_amount DECIMAL(10,2)
+) RETURNS jsonb
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_remaining         DECIMAL(10,2) := p_amount;
+  v_sale              RECORD;
+  v_sale_owed         DECIMAL(10,2);
+  v_fully_paid_count  INT := 0;
+  v_total_owed        DECIMAL(10,2);
+  v_partial_sale_id   UUID := NULL;
+  v_partial_paid      DECIMAL(10,2) := NULL;
+  v_partial_total     DECIMAL(10,2) := NULL;
+  v_partial_remaining DECIMAL(10,2) := NULL;
+BEGIN
+  IF p_amount IS NULL OR p_amount <= 0 THEN
+    RAISE EXCEPTION 'O valor do pagamento deve ser maior que zero';
+  END IF;
+
+  SELECT COALESCE(SUM(total_price - amount_paid), 0)
+  INTO v_total_owed
+  FROM sales
+  WHERE user_id = p_user_id AND customer_id = p_customer_id AND status = 'PENDENTE';
+
+  IF p_amount > v_total_owed THEN
+    RAISE EXCEPTION 'O valor informado (%) excede o total em aberto (%)', p_amount, v_total_owed;
+  END IF;
+
+  FOR v_sale IN
+    SELECT id, total_price, amount_paid
+    FROM sales
+    WHERE user_id = p_user_id AND customer_id = p_customer_id AND status = 'PENDENTE'
+    ORDER BY date ASC, created_at ASC
+    FOR UPDATE
+  LOOP
+    EXIT WHEN v_remaining <= 0;
+
+    v_sale_owed := v_sale.total_price - v_sale.amount_paid;
+
+    IF v_remaining >= v_sale_owed THEN
+      UPDATE sales SET amount_paid = total_price, status = 'PAGO' WHERE id = v_sale.id;
+      v_remaining := v_remaining - v_sale_owed;
+      v_fully_paid_count := v_fully_paid_count + 1;
+    ELSE
+      UPDATE sales SET amount_paid = amount_paid + v_remaining WHERE id = v_sale.id;
+      v_partial_sale_id := v_sale.id;
+      v_partial_paid := v_sale.amount_paid + v_remaining;
+      v_partial_total := v_sale.total_price;
+      v_partial_remaining := v_sale_owed - v_remaining;
+      v_remaining := 0;
+    END IF;
+  END LOOP;
+
+  RETURN jsonb_build_object(
+    'sales_fully_paid', v_fully_paid_count,
+    'partial_sale_id', v_partial_sale_id,
+    'partial_amount_paid', v_partial_paid,
+    'partial_total_price', v_partial_total,
+    'partial_remaining', v_partial_remaining,
+    'amount_applied', p_amount
+  );
+END;
+$$;
 
 -- ── Row Level Security ────────────────────────────────────────────────────────
 -- Each user reads and writes only their own data.
@@ -239,5 +313,6 @@ CREATE POLICY own_data ON profiles FOR ALL USING (auth.uid() = user_id);
 | `sale_items` | Line items per sale (product, quantity, subtotal) |
 | `profiles` | User personal info and daily goal |
 | `update_sold_quantity` | Keeps `products.sold_quantity` automatic |
-| `update_customer_totals` | Keeps `customers` aggregates automatic |
+| `update_customer_totals` | Keeps `customers` aggregates automatic (accounts for `amount_paid`) |
+| `apply_partial_payment` | Allocates a payment across a customer's oldest pending sales |
 | RLS `own_data` | Isolates each user's data via JWT |

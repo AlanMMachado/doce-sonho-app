@@ -32,7 +32,7 @@ export const ReportService = {
 
     const { data: sales, error } = await supabase
       .from('sales')
-      .select('total_price, status, items:sale_items(quantity, subtotal, product_type, product_flavor, product_id)')
+      .select('total_price, status, amount_paid, items:sale_items(quantity, subtotal, product_type, product_flavor, product_id)')
       .eq('user_id', userId)
       .gte('date', `${startDate}T00:00:00Z`)
       .lte('date', `${endDate}T23:59:59Z`);
@@ -45,8 +45,12 @@ export const ReportService = {
     const productMap: Record<string, { quantity: number; totalValue: number }> = {};
 
     for (const sale of sales ?? []) {
-      if (sale.status === 'PAGO') totalSold += sale.total_price ?? 0;
-      if (sale.status === 'PENDENTE') totalPending += sale.total_price ?? 0;
+      if (sale.status === 'PAGO') {
+        totalSold += sale.total_price ?? 0;
+      } else if (sale.status === 'PENDENTE') {
+        totalSold += sale.amount_paid ?? 0;
+        totalPending += (sale.total_price ?? 0) - (sale.amount_paid ?? 0);
+      }
 
       for (const item of (sale.items as any[]) ?? []) {
         quantitySold += item.quantity ?? 0;

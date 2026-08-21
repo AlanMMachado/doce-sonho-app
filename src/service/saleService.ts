@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { Product } from '../types/Product';
-import { Sale, SaleCreateParams, SaleItem, SaleItemForm, SaleUpdateParams } from '../types/Sale';
+import { PartialPaymentResult, Sale, SaleCreateParams, SaleItem, SaleItemForm, SaleUpdateParams } from '../types/Sale';
 import { CustomerService } from './customerService';
 
 export const calculateSubtotalWithBatches = (
@@ -120,6 +120,7 @@ export const SaleService = {
         status: sale.status,
         payment_method: sale.payment_method ?? null,
         total_price,
+        amount_paid: sale.status === 'PAGO' ? total_price : 0,
       })
       .select()
       .single();
@@ -158,12 +159,54 @@ export const SaleService = {
   },
 
   async updateStatus(userId: string, id: string, status: 'PAGO' | 'PENDENTE'): Promise<void> {
+    const fields: Record<string, any> = { status };
+
+    if (status === 'PAGO') {
+      // Mantém o invariante status = 'PAGO' ⟹ amount_paid = total_price,
+      // igual ao que a RPC apply_partial_payment já garante.
+      const { data, error: fetchError } = await supabase
+        .from('sales')
+        .select('total_price')
+        .eq('user_id', userId)
+        .eq('id', id)
+        .single();
+      if (fetchError) throw fetchError;
+      fields.amount_paid = data.total_price;
+    } else {
+      // Reverter pra PENDENTE zera o pagamento — esse toggle não representa
+      // pagamento parcial, então "voltar a pendente" significa "nada pago ainda",
+      // não deixar o amount_paid antigo fazendo a venda aparecer como parcial.
+      fields.amount_paid = 0;
+    }
+
     const { error } = await supabase
       .from('sales')
-      .update({ status })
+      .update(fields)
       .eq('user_id', userId)
       .eq('id', id);
     if (error) throw error;
+  },
+
+  async applyPartialPayment(
+    userId: string,
+    customerId: string,
+    amount: number
+  ): Promise<PartialPaymentResult> {
+    const { data, error } = await supabase.rpc('apply_partial_payment', {
+      p_user_id: userId,
+      p_customer_id: customerId,
+      p_amount: amount,
+    });
+    if (error) throw error;
+
+    return {
+      salesFullyPaid: data.sales_fully_paid,
+      partialSaleId: data.partial_sale_id,
+      partialAmountPaid: data.partial_amount_paid,
+      partialTotalPrice: data.partial_total_price,
+      partialRemaining: data.partial_remaining,
+      amountApplied: data.amount_applied,
+    };
   },
 
   async update(userId: string, id: string, sale: SaleUpdateParams): Promise<void> {
@@ -173,8 +216,10 @@ export const SaleService = {
     if (sale.status !== undefined) fields.status = sale.status;
     if (sale.payment_method !== undefined) fields.payment_method = sale.payment_method;
 
+    let total_price: number | undefined;
+
     if (sale.items !== undefined) {
-      const total_price = sale.items.reduce((sum, item) => sum + item.subtotal, 0);
+      total_price = sale.items.reduce((sum, item) => sum + item.subtotal, 0);
       fields.total_price = total_price;
 
       const { error: deleteError } = await supabase
@@ -197,6 +242,28 @@ export const SaleService = {
 
       const { error: insertError } = await supabase.from('sale_items').insert(itemsToInsert);
       if (insertError) throw insertError;
+    }
+
+    if (sale.status === 'PAGO') {
+      // Mesmo invariante de updateStatus/create: status = 'PAGO' ⟹ amount_paid = total_price.
+      // Se os items não vieram nesta chamada, total_price ainda não é conhecido aqui —
+      // busca o valor atual da venda pra manter o dado consistente.
+      if (total_price === undefined) {
+        const { data, error: fetchError } = await supabase
+          .from('sales')
+          .select('total_price')
+          .eq('user_id', userId)
+          .eq('id', id)
+          .single();
+        if (fetchError) throw fetchError;
+        total_price = data.total_price;
+      }
+      fields.amount_paid = total_price;
+    } else if (sale.status === 'PENDENTE') {
+      // Reverter pra PENDENTE zera o pagamento — o toggle da tela de edição não
+      // representa pagamento parcial, então "voltar a pendente" é "nada pago
+      // ainda", não deixar o amount_paid antigo fazendo a venda aparecer parcial.
+      fields.amount_paid = 0;
     }
 
     if (Object.keys(fields).length > 0) {
@@ -235,23 +302,25 @@ export const SaleService = {
   async getTotalSoldByPeriod(userId: string, start: string, end: string): Promise<number> {
     const { data } = await supabase
       .from('sales')
-      .select('total_price')
+      .select('total_price, status, amount_paid')
       .eq('user_id', userId)
-      .eq('status', 'PAGO')
       .gte('date', start)
       .lte('date', end);
-    return (data ?? []).reduce((s, v) => s + (v.total_price ?? 0), 0);
+    return (data ?? []).reduce((s, v) => {
+      if (v.status === 'PAGO') return s + (v.total_price ?? 0);
+      return s + (v.amount_paid ?? 0); // parte já paga de uma venda parcial conta como vendido
+    }, 0);
   },
 
   async getTotalPendingByPeriod(userId: string, start: string, end: string): Promise<number> {
     const { data } = await supabase
       .from('sales')
-      .select('total_price')
+      .select('total_price, status, amount_paid')
       .eq('user_id', userId)
       .eq('status', 'PENDENTE')
       .gte('date', start)
       .lte('date', end);
-    return (data ?? []).reduce((s, v) => s + (v.total_price ?? 0), 0);
+    return (data ?? []).reduce((s, v) => s + ((v.total_price ?? 0) - (v.amount_paid ?? 0)), 0);
   },
 
   async delete(userId: string, id: string): Promise<void> {

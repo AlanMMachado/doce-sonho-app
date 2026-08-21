@@ -29,9 +29,10 @@ export default function SaleCard({
   onMarkAsPaid,
 }: SaleCardProps) {
   const isPaid = sale.status === 'PAGO';
+  const isPartial = sale.status === 'PENDENTE' && sale.amount_paid > 0;
 
   return (
-    <View style={[styles.saleItem, isPaid ? styles.saleItemPaid : styles.saleItemPending]}>
+    <View style={[styles.saleItem, isPaid ? styles.saleItemPaid : isPartial ? styles.saleItemPartial : styles.saleItemPending]}>
       <View style={styles.saleContent}>
         <View style={styles.saleInfo}>
           <Text style={styles.saleCustomer}>
@@ -57,9 +58,13 @@ export default function SaleCard({
         </View>
 
         <View style={styles.saleValues}>
-          <Text style={styles.salePrice}>R$ {sale.total_price.toFixed(2)}</Text>
-          <Text style={[styles.statusLabel, isPaid ? styles.statusLabelPaid : styles.statusLabelPending]}>
-            {'● '}{isPaid ? 'Pago' : 'Pendente'}
+          <Text style={styles.salePrice}>
+            {isPartial
+              ? `R$ ${sale.amount_paid.toFixed(2)} / ${sale.total_price.toFixed(2)}`
+              : `R$ ${sale.total_price.toFixed(2)}`}
+          </Text>
+          <Text style={[styles.statusLabel, isPaid ? styles.statusLabelPaid : isPartial ? styles.statusLabelPartial : styles.statusLabelPending]}>
+            {'● '}{isPaid ? 'Pago' : isPartial ? 'Parcial' : 'Pendente'}
           </Text>
         </View>
       </View>
@@ -100,6 +105,7 @@ export default function SaleCard({
 const styles = StyleSheet.create({
   saleItem: { paddingVertical: 12, paddingHorizontal: 16, backgroundColor: COLORS.white, borderRadius: 8, borderWidth: 1, borderColor: COLORS.borderGray, borderLeftWidth: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2, marginBottom: 12 },
   saleItemPaid: { borderLeftColor: COLORS.green },
+  saleItemPartial: { borderLeftColor: COLORS.info },
   saleItemPending: { borderLeftColor: COLORS.warning },
   saleContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   saleInfo: { flex: 1, flexDirection: 'column' },
@@ -112,6 +118,7 @@ const styles = StyleSheet.create({
   salePrice: { fontSize: 15, fontWeight: 'bold', color: COLORS.textDark, marginBottom: 4 },
   statusLabel: { fontSize: 11, fontWeight: 'bold' },
   statusLabelPaid: { color: COLORS.green },
+  statusLabelPartial: { color: COLORS.info },
   statusLabelPending: { color: COLORS.warning },
   actionsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: COLORS.borderGray },
   markPaidButton: { backgroundColor: COLORS.green, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },

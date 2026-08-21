@@ -8,6 +8,7 @@ interface Action {
   onPress: () => void | Promise<void>;
   destructive?: boolean;
   loading?: boolean;
+  disabled?: boolean;
 }
 
 interface ModernModalProps {
@@ -39,13 +40,17 @@ export default function ModernModal({
       <View style={styles.actions}>
         {primaryAction && (
           <TouchableOpacity
-            style={[styles.button, primaryAction.destructive ? styles.destructiveButton : styles.primaryButton]}
+            style={[
+              styles.button,
+              primaryAction.destructive ? styles.destructiveButton : styles.primaryButton,
+              primaryAction.disabled && styles.disabledButton,
+            ]}
             onPress={primaryAction.onPress}
-            disabled={primaryAction.loading}
+            disabled={primaryAction.loading || primaryAction.disabled}
             activeOpacity={0.8}>
             {primaryAction.loading
               ? <ActivityIndicator color={COLORS.white} size={18} />
-              : <Text style={styles.primaryButtonText}>{primaryAction.label}</Text>}
+              : <Text style={[styles.primaryButtonText, primaryAction.disabled && styles.disabledButtonText]}>{primaryAction.label}</Text>}
           </TouchableOpacity>
         )}
         {secondaryAction && (
@@ -116,7 +121,9 @@ const styles = StyleSheet.create({
   button: { width: '100%', borderRadius: 12, paddingVertical: 15, alignItems: 'center' },
   primaryButton: { backgroundColor: COLORS.mediumBlue },
   destructiveButton: { backgroundColor: COLORS.error },
+  disabledButton: { backgroundColor: COLORS.borderGray },
   primaryButtonText: { fontSize: 15, fontWeight: '700', color: COLORS.white },
+  disabledButtonText: { color: COLORS.textLight },
   secondaryButton: { width: '100%', borderRadius: 12, paddingVertical: 14, alignItems: 'center', borderWidth: 1.5, borderColor: COLORS.borderGray },
   secondaryButtonText: { fontSize: 15, fontWeight: '700', color: COLORS.textMedium },
 });

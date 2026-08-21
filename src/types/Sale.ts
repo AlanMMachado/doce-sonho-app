@@ -28,8 +28,18 @@ export interface Sale {
   status: 'PAGO' | 'PENDENTE';
   payment_method?: string;
   total_price: number;
+  amount_paid: number;
   items: SaleItem[];
   created_at?: string;
+}
+
+export interface PartialPaymentResult {
+  salesFullyPaid: number;
+  partialSaleId: string | null;
+  partialAmountPaid: number | null;
+  partialTotalPrice: number | null;
+  partialRemaining: number | null;
+  amountApplied: number;
 }
 
 export interface SaleCreateParams {

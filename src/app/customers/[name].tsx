@@ -11,7 +11,7 @@ import { SaleService } from '@/service/saleService';
 import { Customer } from '@/types/Customer';
 import { Sale } from '@/types/Sale';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Clock, DollarSign, Edit, ShoppingCart, Trash2, XCircle } from 'lucide-react-native';
+import { AlertCircle, Clock, DollarSign, Edit, Info, ShoppingCart, Trash2, XCircle } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text, TextInput } from 'react-native-paper';
@@ -22,6 +22,42 @@ type CustomerWithSales = Customer & {
   pendingSales: Sale[];
   firstPurchase: string;
 };
+
+function formatCents(cents: number): string {
+  return (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Simula, no client, a mesma alocação "mais antiga primeiro" que a RPC
+// apply_partial_payment faz no banco — só para dar um preview ao usuário antes
+// de confirmar. A RPC continua sendo a única fonte de verdade que efetivamente
+// aplica o pagamento; se a regra de alocação mudar um dia, atualizar os dois.
+function simulatePartialPayment(pendingSales: Sale[], amount: number) {
+  const sorted = [...pendingSales].sort((a, b) => {
+    const diff = new Date(a.date).getTime() - new Date(b.date).getTime();
+    if (diff !== 0) return diff;
+    return (a.created_at ?? '').localeCompare(b.created_at ?? '');
+  });
+
+  let remaining = amount;
+  let fullyPaidCount = 0;
+  let partialSale: Sale | null = null;
+  let partialNewAmountPaid = 0;
+
+  for (const sale of sorted) {
+    if (remaining <= 0) break;
+    const owed = sale.total_price - sale.amount_paid;
+    if (remaining >= owed) {
+      remaining -= owed;
+      fullyPaidCount++;
+    } else {
+      partialSale = sale;
+      partialNewAmountPaid = sale.amount_paid + remaining;
+      remaining = 0;
+    }
+  }
+
+  return { fullyPaidCount, partialSale, partialNewAmountPaid };
+}
 
 export default function CustomerDetailsScreen() {
   const { user } = useAuth();
@@ -35,6 +71,9 @@ export default function CustomerDetailsScreen() {
   const [editName, setEditName] = useState('');
   const [editError, setEditError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [partialModalVisible, setPartialModalVisible] = useState(false);
+  const [partialAmountCents, setPartialAmountCents] = useState(0);
+  const [partialError, setPartialError] = useState('');
 
   const loadCustomer = async () => {
     try {
@@ -85,6 +124,30 @@ export default function CustomerDetailsScreen() {
     }
   };
 
+  const handlePartialPayment = async () => {
+    const amount = partialAmountCents / 100;
+    if (!amount || amount <= 0) {
+      setPartialError('Informe um valor válido');
+      return;
+    }
+    if (amount > (customer!.total_owed || 0)) {
+      setPartialError('Valor inserido excede o total em aberto');
+      return;
+    }
+    try {
+      setActionLoading(true);
+      await SaleService.applyPartialPayment(user!.id, customer!.id, amount);
+      setPartialModalVisible(false);
+      setPartialAmountCents(0);
+      await loadCustomer();
+    } catch (error: any) {
+      console.error('Erro ao registrar pagamento parcial:', error);
+      setPartialError(error.message ?? 'Erro ao registrar pagamento. Tente novamente.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const getProductName = (productId: string | null, item?: { product_type?: string; product_flavor?: string }) => {
     if (item?.product_type && item?.product_flavor) return `${item.product_type} ${item.product_flavor}`;
     return 'Produto removido';
@@ -127,6 +190,34 @@ export default function CustomerDetailsScreen() {
     return Math.floor((today.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
   };
 
+  const partialAmountReais = partialAmountCents / 100;
+  const partialDisplayValue = `R$ ${formatCents(partialAmountCents)}`;
+
+  // Card de feedback abaixo do input
+  const partialFeedback: { state: 'neutral' | 'preview' | 'error'; text: string } = (() => {
+    if (partialError) return { state: 'error', text: partialError };
+    if (!customer || partialAmountReais <= 0) {
+      return { state: 'neutral', text: 'Informe quanto o cliente pagou' };
+    }
+    if (partialAmountReais > (customer.total_owed || 0)) {
+      return { state: 'error', text: 'Valor excede o total em aberto' };
+    }
+
+    const { fullyPaidCount, partialSale, partialNewAmountPaid } = simulatePartialPayment(customer.pendingSales, partialAmountReais);
+    if (fullyPaidCount === 0 && !partialSale) {
+      return { state: 'neutral', text: 'Informe quanto o cliente pagou' };
+    }
+
+    const parts: string[] = [];
+    if (fullyPaidCount > 0) {
+      parts.push(`${fullyPaidCount} venda${fullyPaidCount > 1 ? 's' : ''} ser${fullyPaidCount > 1 ? 'ão' : 'á'} marcada${fullyPaidCount > 1 ? 's' : ''} como paga${fullyPaidCount > 1 ? 's' : ''}`);
+    }
+    if (partialSale) {
+      const position = fullyPaidCount + 1;
+      parts.push(`${position}° venda de R$ ${partialSale.total_price.toFixed(2)} será marcada como parcial (R$ ${partialNewAmountPaid.toFixed(2)}/${partialSale.total_price.toFixed(2)})`);
+    }
+    return { state: 'preview', text: parts.join(' · ') };
+  })();
 
   return (
     <View style={styles.container}>
@@ -251,6 +342,15 @@ export default function CustomerDetailsScreen() {
               </View>
             </View>
 
+            <TouchableOpacity
+              style={[styles.partialPaymentButton, customer.pendingSales.length === 0 && styles.partialPaymentButtonDisabled]}
+              disabled={customer.pendingSales.length === 0}
+              onPress={() => { setPartialAmountCents(0); setPartialError(''); setPartialModalVisible(true); }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.partialPaymentButtonText}>Registrar Pagamento</Text>
+            </TouchableOpacity>
+
             {/* Histórico de Compras */}
             <View style={styles.historicoSection}>
               <Text style={styles.sectionTitle}>Histórico de Compras</Text>
@@ -303,6 +403,81 @@ export default function CustomerDetailsScreen() {
         {!!editError && (
           <Text style={{ fontSize: 12, color: COLORS.error, marginTop: 4 }}>{editError}</Text>
         )}
+      </ModernModal>
+
+      <ModernModal
+        centered
+        visible={partialModalVisible}
+        onClose={() => setPartialModalVisible(false)}
+        title="Registrar Pagamento"
+        primaryAction={{
+          label: actionLoading ? 'Processando...' : 'Confirmar',
+          onPress: handlePartialPayment,
+          loading: actionLoading,
+          disabled: partialAmountReais <= 0 || partialAmountReais > (customer?.total_owed || 0),
+        }}
+        secondaryAction={{ label: 'Cancelar', onPress: () => setPartialModalVisible(false) }}>
+        <View style={styles.partialOwedBlock}>
+          <Text style={styles.partialOwedLabel}>Em aberto</Text>
+          <Text style={styles.partialOwedValue}>R$ {(customer?.total_owed || 0).toFixed(2)}</Text>
+        </View>
+
+        <View style={styles.partialInputRow}>
+          <TextInput
+            value={partialDisplayValue}
+            selection={{ start: partialDisplayValue.length, end: partialDisplayValue.length }}
+            onSelectionChange={() => {}}
+            onChangeText={(t) => {
+              const digits = t.replace(/\D/g, '');
+              setPartialAmountCents(digits === '' ? 0 : parseInt(digits, 10));
+              setPartialError('');
+            }}
+            mode="outlined"
+            keyboardType="numeric"
+            outlineColor={partialFeedback.state === 'error' ? COLORS.error : COLORS.borderGray}
+            activeOutlineColor={partialFeedback.state === 'error' ? COLORS.error : COLORS.mediumBlue}
+            style={{ backgroundColor: COLORS.white, flex: 1 }}
+          />
+          <TouchableOpacity
+            style={styles.partialFillAllButton}
+            onPress={() => {
+              setPartialAmountCents(Math.round((customer?.total_owed || 0) * 100));
+              setPartialError('');
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.partialFillAllButtonText}>Pagar tudo</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View
+          style={[
+            styles.partialFeedbackCard,
+            partialFeedback.state === 'error'
+              ? styles.partialFeedbackCardError
+              : partialFeedback.state === 'preview'
+                ? styles.partialFeedbackCardPreview
+                : styles.partialFeedbackCardNeutral,
+          ]}
+        >
+          {partialFeedback.state === 'error' ? (
+            <AlertCircle size={15} color={COLORS.error} />
+          ) : (
+            <Info size={15} color={partialFeedback.state === 'preview' ? COLORS.mediumBlue : COLORS.textLight} />
+          )}
+          <Text
+            style={[
+              styles.partialFeedbackText,
+              partialFeedback.state === 'error'
+                ? styles.partialFeedbackTextError
+                : partialFeedback.state === 'preview'
+                  ? styles.partialFeedbackTextPreview
+                  : styles.partialFeedbackTextNeutral,
+            ]}
+          >
+            {partialFeedback.text}
+          </Text>
+        </View>
       </ModernModal>
 
       <ModernModal
@@ -411,6 +586,89 @@ const styles = StyleSheet.create({
   metricsRow: {
     flexDirection: 'row',
     gap: 12,
+  },
+  partialPaymentButton: {
+    backgroundColor: COLORS.mediumBlue,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  partialPaymentButtonDisabled: {
+    backgroundColor: COLORS.borderGray,
+  },
+  partialPaymentButtonText: {
+    color: COLORS.white,
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  partialOwedBlock: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  partialOwedLabel: {
+    fontSize: 11,
+    color: COLORS.textLight,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  partialOwedValue: {
+    fontSize: 22,
+    color: COLORS.error,
+    fontWeight: '800',
+  },
+  partialInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  partialFillAllButton: {
+    backgroundColor: COLORS.green,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    minHeight: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  partialFillAllButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.white,
+    textAlign: 'center',
+  },
+  partialFeedbackCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 12,
+    minHeight: 44,
+  },
+  partialFeedbackCardNeutral: {
+    backgroundColor: COLORS.softGray,
+  },
+  partialFeedbackCardPreview: {
+    backgroundColor: '#e8f0fe',
+  },
+  partialFeedbackCardError: {
+    backgroundColor: '#fdecea',
+  },
+  partialFeedbackText: {
+    fontSize: 12,
+    lineHeight: 17,
+    flex: 1,
+  },
+  partialFeedbackTextNeutral: {
+    color: COLORS.textLight,
+  },
+  partialFeedbackTextPreview: {
+    color: COLORS.mediumBlue,
+  },
+  partialFeedbackTextError: {
+    color: COLORS.error,
   },
   accentCard: {
     flex: 1,

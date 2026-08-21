@@ -94,7 +94,7 @@ export default function RegisterScreen() {
 
   const handleModalDismiss = () => {
     setModalMessage(null);
-    if (modalType === 'success') router.replace('/(tabs)/index');
+    if (modalType === 'success') router.replace('/');
   };
 
   const forca = useMemo(() => password.length > 0 ? calculatePasswordStrength(password) : null, [password]);

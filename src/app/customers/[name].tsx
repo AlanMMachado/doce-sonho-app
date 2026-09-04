@@ -10,6 +10,7 @@ import { CustomerService } from '@/service/customerService';
 import { SaleService } from '@/service/saleService';
 import { Customer } from '@/types/Customer';
 import { Sale } from '@/types/Sale';
+import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AlertCircle, Clock, DollarSign, Edit, Info, ShoppingCart, Trash2, XCircle } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -66,6 +67,7 @@ export default function CustomerDetailsScreen() {
   const [customer, setCustomer] = useState<CustomerWithSales | null>(null);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [saleToMark, setSaleToMark] = useState<Sale | null>(null);
+  const [markingPaid, setMarkingPaid] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [editName, setEditName] = useState('');
@@ -113,7 +115,9 @@ export default function CustomerDetailsScreen() {
   const { loading, refreshing, onRefresh } = useScreenData(loadCustomer, [name]);
 
   const markAsPaid = async (sale: Sale) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
+      setMarkingPaid(true);
       await SaleService.updateStatus(user!.id, sale.id, 'PAGO');
       await loadCustomer();
       setPaymentModalVisible(false);
@@ -121,6 +125,8 @@ export default function CustomerDetailsScreen() {
     } catch (error) {
       console.error('Erro ao marcar venda como paga:', error);
       alert('Erro ao registrar pagamento. Tente novamente.');
+    } finally {
+      setMarkingPaid(false);
     }
   };
 
@@ -375,12 +381,21 @@ export default function CustomerDetailsScreen() {
 
       <ModernModal
         visible={paymentModalVisible}
-        onClose={() => { setPaymentModalVisible(false); setSaleToMark(null); }}
+        onClose={() => { if (!markingPaid) { setPaymentModalVisible(false); setSaleToMark(null); } }}
         title="Confirmar Pagamento"
-        primaryAction={{ label: 'Confirmar', onPress: () => { if (saleToMark) markAsPaid(saleToMark); } }}
-        secondaryAction={{ label: 'Cancelar', onPress: () => { setPaymentModalVisible(false); setSaleToMark(null); } }}>
-        <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>
-          Marcar a venda de R$ {(saleToMark?.total_price || 0).toFixed(2)} como paga?
+        primaryAction={{
+          label: 'Confirmar',
+          onPress: () => { if (saleToMark) markAsPaid(saleToMark); },
+          loading: markingPaid,
+        }}
+        secondaryAction={{
+          label: 'Cancelar',
+          onPress: () => { setPaymentModalVisible(false); setSaleToMark(null); },
+          loading: markingPaid,
+        }}>
+        <Text style={{ fontSize: 15, color: '#374151', textAlign: 'center', lineHeight: 22 }}>
+          Marcar a venda de <Text style={{ fontWeight: '700' }}>{saleToMark?.customer_name}</Text> no valor de{' '}
+          <Text style={{ fontWeight: '700', color: COLORS.green }}>R$ {(saleToMark?.total_price || 0).toFixed(2)}</Text> como paga?
         </Text>
       </ModernModal>
 

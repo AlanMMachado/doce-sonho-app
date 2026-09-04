@@ -312,6 +312,18 @@ export const SaleService = {
     }, 0);
   },
 
+  async getTotalPaid(userId: string): Promise<number> {
+    const { data, error } = await supabase
+      .from('sales')
+      .select('total_price, status, amount_paid')
+      .eq('user_id', userId);
+    if (error) throw error;
+    return (data ?? []).reduce((s, v) => {
+      if (v.status === 'PAGO') return s + (v.total_price ?? 0);
+      return s + (v.amount_paid ?? 0); // parte já paga de uma venda parcial também conta
+    }, 0);
+  },
+
   async getTotalPendingByPeriod(userId: string, start: string, end: string): Promise<number> {
     const { data } = await supabase
       .from('sales')

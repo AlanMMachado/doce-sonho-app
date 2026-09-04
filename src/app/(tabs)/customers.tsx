@@ -5,6 +5,7 @@ import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScreenData } from '@/hooks/useScreenData';
 import { CustomerService } from '@/service/customerService';
+import { SaleService } from '@/service/saleService';
 import { Customer } from '@/types/Customer';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -24,7 +25,7 @@ export default function CustomersScreen() {
     debtors: 0,
     current: 0,
     totalOwed: 0,
-    totalPurchased: 0,
+    totalPaid: 0,
   });
 
   const loadData = async () => {
@@ -32,13 +33,16 @@ export default function CustomersScreen() {
       const data = await CustomerService.getAll(user!.id);
       setCustomers(data);
 
-      const stats = await CustomerService.getStats(user!.id);
+      const [stats, totalPaid] = await Promise.all([
+        CustomerService.getStats(user!.id),
+        SaleService.getTotalPaid(user!.id),
+      ]);
       setSummary({
         totalCustomers: stats.totalCustomers,
         debtors: stats.totalDebtors,
         current: stats.totalCustomers - stats.totalDebtors,
         totalOwed: stats.totalAmountOwed,
-        totalPurchased: stats.totalAmountPurchased,
+        totalPaid,
       });
     } catch (error) {
       console.error('Erro ao carregar dados dos clientes:', error);
@@ -123,7 +127,7 @@ export default function CustomersScreen() {
                 <Text style={styles.summaryIcon}>🟢</Text>
                 <Text style={styles.summaryValue}>{summary.current}</Text>
                 <Text style={styles.summaryLabel}>Em Dia</Text>
-                <Text style={styles.summarySubtext}>R$ {(summary.totalPurchased || 0).toFixed(2)}</Text>
+                <Text style={styles.summarySubtext}>R$ {(summary.totalPaid || 0).toFixed(2)}</Text>
               </View>
             </View>
 

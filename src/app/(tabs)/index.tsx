@@ -12,8 +12,6 @@ import { ReportService } from '@/service/reportService';
 import { SaleService } from '@/service/saleService';
 import { Product } from '@/types/Product';
 import { Sale } from '@/types/Sale';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -103,7 +101,6 @@ export default function DashboardScreen() {
     <View style={styles.container}>
       <Header
         title="Dashboard"
-        subtitle={format(new Date(), "dd 'de' MMMM", { locale: ptBR })}
         actions={<ConfigMenuButton />}
       />
       {loading ? (

@@ -115,7 +115,7 @@ export default function NewShipmentScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Nova Remessa" subtitle="Adicione produtos e quantidades" />
+      <Header title="Nova Remessa" showBackButton />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
 

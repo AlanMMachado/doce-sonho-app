@@ -159,7 +159,7 @@ export default function NewSaleScreen() {
   if (!loading && products.length === 0) {
     return (
       <View style={styles.container}>
-        <Header title="Nova Venda" subtitle="Registre uma venda rapidamente" />
+        <Header title="Nova Venda" showBackButton />
         <View style={styles.emptyState}>
           <Text style={styles.emptyIcon}>📦</Text>
           <Text style={styles.emptyText}>Nenhum produto disponível</Text>
@@ -177,7 +177,7 @@ export default function NewSaleScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Nova Venda" subtitle="Registre uma venda rapidamente" />
+      <Header title="Nova Venda" showBackButton />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

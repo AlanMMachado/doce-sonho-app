@@ -223,6 +223,7 @@ export default function CustomerDetailsScreen() {
     <View style={styles.container}>
       <Header
         title="Histórico de compras"
+        showBackButton
         actions={
           !loading && customer ? (
             <>

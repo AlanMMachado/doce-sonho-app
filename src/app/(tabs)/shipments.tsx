@@ -78,7 +78,6 @@ export default function ShipmentsScreen() {
     <View style={styles.container}>
       <Header
         title="Remessas"
-        subtitle={`${shipments.length} ${shipments.length === 1 ? 'remessa' : 'remessas'}`}
         actions={<ConfigMenuButton />}
       />
 

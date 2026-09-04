@@ -103,7 +103,7 @@ export default function NewProductScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Novo Produto" subtitle="Configure tipo e preços" />
+      <Header title="Novo Produto" showBackButton />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}

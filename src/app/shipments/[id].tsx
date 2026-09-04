@@ -138,7 +138,7 @@ export default function ShipmentDetailsScreen() {
     <View style={styles.container}>
       <Header
         title="Detalhes da Remessa"
-        subtitle={loading ? 'Carregando...' : !shipment ? 'Não encontrada' : formatDate(shipment.date)}
+        showBackButton
         actions={
           !loading && shipment ? (
             <>

@@ -144,7 +144,7 @@ export default function EditShipmentScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Editar Remessa" subtitle="Atualize os produtos e dados" />
+      <Header title="Editar Remessa" showBackButton />
       {loading ? (
         <ScrollView scrollEnabled={false} style={styles.scrollContent}>
           <SkeletonCard lines={4} />

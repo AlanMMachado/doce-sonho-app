@@ -72,7 +72,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Meu Perfil" subtitle="Edite suas informações pessoais" />
+      <Header title="Meu Perfil" showBackButton />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

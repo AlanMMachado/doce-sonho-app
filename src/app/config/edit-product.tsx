@@ -113,7 +113,7 @@ export default function EditProductScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Editar Produto" subtitle="Atualize tipo e preços" />
+      <Header title="Editar Produto" showBackButton />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}

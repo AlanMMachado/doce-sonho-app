@@ -39,7 +39,7 @@ export default function ConfigScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Configurações" subtitle="Gerencie as configurações do sistema" />
+      <Header title="Configurações" showBackButton />
 
       <ScrollView style={styles.content}>
         <View style={styles.configList}>

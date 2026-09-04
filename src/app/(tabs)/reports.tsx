@@ -28,7 +28,7 @@ export default function ReportsScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Relatórios" subtitle="Análise de desempenho" actions={<ConfigMenuButton />} />
+      <Header title="Relatórios" actions={<ConfigMenuButton />} />
       <View style={styles.periodWrapper}>
         <View style={styles.periodContainer}>
           {([

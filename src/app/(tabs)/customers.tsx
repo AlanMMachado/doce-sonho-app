@@ -60,7 +60,6 @@ export default function CustomersScreen() {
     <View style={styles.container}>
       <Header
         title="Clientes"
-        subtitle={`${summary.totalCustomers} clientes ativos`}
         actions={<ConfigMenuButton />}
       />
 

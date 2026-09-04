@@ -207,7 +207,7 @@ export default function EditSaleScreen() {
   if (!loading && products.length === 0) {
     return (
       <View style={styles.container}>
-        <Header title="Editar Venda" subtitle="Atualize os dados da venda" />
+        <Header title="Editar Venda" showBackButton />
         <View style={styles.emptyState}>
           <Text style={styles.emptyIcon}>📦</Text>
           <Text style={styles.emptyText}>Nenhum produto disponível</Text>
@@ -225,7 +225,7 @@ export default function EditSaleScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Editar Venda" subtitle="Atualize os dados da venda" />
+      <Header title="Editar Venda" showBackButton />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

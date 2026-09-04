@@ -1,24 +1,46 @@
 import NetworkStatusBanner from '@/components/NetworkStatusBanner';
 import { COLORS } from '@/constants/Colors';
+import { useRouter } from 'expo-router';
+import { ArrowLeft } from 'lucide-react-native';
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 
 interface HeaderProps {
   title: string;
   subtitle?: string;
   actions?: React.ReactNode;
+  showBackButton?: boolean;
 }
 
-export default function Header({ title, subtitle, actions }: HeaderProps) {
+export default function Header({ title, subtitle, actions, showBackButton }: HeaderProps) {
+  const router = useRouter();
+
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
+
   return (
     <>
       <View style={styles.header}>
-        {/* Decorative circles background */}
         <View style={styles.decorative1} />
         <View style={styles.decorative2} />
 
         <View style={styles.headerContent}>
+          {showBackButton && (
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={handleBack}
+              activeOpacity={0.7}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <ArrowLeft size={26} color={COLORS.white} />
+            </TouchableOpacity>
+          )}
           <View style={styles.textContainer}>
             <Text style={styles.title}>{title}</Text>
             {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
@@ -38,7 +60,7 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 16,
     paddingTop: 40,
-    paddingBottom: 20,
+    paddingBottom: 16,
     backgroundColor: COLORS.mediumBlue,
     position: 'relative',
     overflow: 'hidden',
@@ -70,26 +92,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    minHeight: 40, // Altura fixa para garantir que a altura do header não mude com base no conteúdo
     zIndex: 1,
   },
   textContainer: {
     flex: 1,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
     color: COLORS.white,
     letterSpacing: -0.5,
-    marginBottom: 6,
   },
   subtitle: {
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.8)',
     fontWeight: '500',
+    marginTop: 6,
   },
   actionsContainer: {
     flexDirection: 'row',
     gap: 12,
+  },
+  backButton: {
+    marginLeft: -6,
+    marginRight: 6,
   },
   accentLine: {
     position: 'absolute',

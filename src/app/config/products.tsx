@@ -51,7 +51,7 @@ export default function ProductsConfigScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Configurar Produtos" subtitle="Gerencie os tipos de produto e seus preços" />
+      <Header title="Configurar Produtos" showBackButton />
 
       {loading ? (
         <ScrollView scrollEnabled={false} style={styles.content}>

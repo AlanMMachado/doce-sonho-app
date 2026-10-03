@@ -31,6 +31,23 @@ export default function EditSaleScreen() {
     status: 'PENDENTE' as 'PAGO' | 'PENDENTE',
     payment_method: 'PIX'
   });
+  
+  const getOriginalProductQuantity = (productId: string): number => {
+    return (sale?.items ?? []).reduce((total, item) => {
+      if (item.product_id === productId){ // "===" evita conversões automáticas de tipo
+        return total + item.quantity;
+      }
+
+      return total;
+    }, 0);
+  };
+
+  const getEditableStock = (product: Product): number => {
+    const currentStock = product.initial_quantity - product.sold_quantity;
+    const originalQuantity = getOriginalProductQuantity(product.id);
+
+    return currentStock + originalQuantity;
+  }
 
   const loadData = async () => {
     try {
@@ -99,7 +116,7 @@ export default function EditSaleScreen() {
     const product = products.find(p => p.id === productId);
     if (!product) return;
 
-    const availableStock = product.initial_quantity - product.sold_quantity;
+    const availableStock = getEditableStock(product);
 
     if (quantity > availableStock) {
       quantity = availableStock;
@@ -160,7 +177,7 @@ export default function EditSaleScreen() {
     for (const item of validItems) {
       const product = products.find(p => p.id === item.product_id);
       if (product) {
-        const availableStock = product.initial_quantity - product.sold_quantity;
+        const availableStock = getEditableStock(product);
         const requestedQuantity = parseInt(item.quantity);
         if (requestedQuantity > availableStock) {
           alert(`Estoque insuficiente para ${product.type} ${product.flavor}. Disponível: ${availableStock} unidades`);
@@ -327,7 +344,7 @@ export default function EditSaleScreen() {
               {/* Lista de Produtos */}
               <View style={styles.produtosListContainer}>
                 {products.map((product) => {
-                  const stock = product.initial_quantity - product.sold_quantity;
+                  const stock = getEditableStock(product);
                   const selectedQuantity = getProductQuantity(product.id);
 
                   return (

@@ -33,6 +33,34 @@ export const ProductService = {
     return data ?? [];
   },
 
+  async getByIds(userId: string, ids: string[]): Promise<Product[]> {
+    if (ids.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('user_id', userId)
+      .in('id', ids);
+
+    if (error) throw error;
+    return data ?? [];
+  },
+
+  async getByShipmentIds(userId: string, shipmentIds: string[]): Promise<Product[]> {
+    if (shipmentIds.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('user_id', userId)
+      .in('shipment_id', shipmentIds)
+      .order('type')
+      .order('flavor');
+
+    if (error) throw error;
+    return data ?? [];
+  },
+
   async getById(userId: string, id: string): Promise<Product | null> {
     const { data, error } = await supabase
       .from('products')

@@ -4,8 +4,8 @@ import { SkeletonBlock } from '@/components/SkeletonCard';
 import { COLORS } from '@/constants/Colors';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { ProductService } from '@/service/productService';
 import { SaleService, recalculateAllPrices } from '@/service/saleService';
-import { ShipmentService } from '@/service/shipmentService';
 import { Product } from '@/types/Product';
 import { Sale, SaleItemForm } from '@/types/Sale';
 import { useFocusEffect } from '@react-navigation/native';
@@ -61,22 +61,35 @@ export default function EditSaleScreen() {
       }
       setSale(saleData);
 
-      const productsInEditing = new Set(saleData.items.map(item => item.product_id));
+      const productIds = [
+        ...new Set(
+          saleData.items
+            .map(item => item.product_id)
+            .filter((productId): productId is string => productId !== null)
+        )
+      ];
 
-      const activeShipments = await ShipmentService.getActive(user!.id);
-      const allProducts: Product[] = [];
+      const originalProducts = await ProductService.getByIds(user!.id, productIds);
 
-      for (const shipment of activeShipments) {
-        const shipmentProducts = await ShipmentService.getProductsByShipmentId(user!.id, shipment.id);
-        const availableProducts = shipmentProducts.filter(p => {
-          const hasStock = p.initial_quantity - p.sold_quantity > 0;
-          const isInEditing = productsInEditing.has(p.id);
-          return hasStock || isInEditing;
-        });
-        allProducts.push(...availableProducts);
-      }
+      const shipmentIds = [
+        ...new Set(originalProducts.map(product => product.shipment_id))
+      ];
 
-      setProducts(allProducts);
+      const productsFromSaleShipments = await ProductService.getByShipmentIds(
+        user!.id,
+        shipmentIds
+      );
+
+      const productsInEditing = new Set(productIds);
+
+      const availableProducts = productsFromSaleShipments.filter(product => {
+        const hasStock = product.initial_quantity - product.sold_quantity > 0;
+        const isInEditing = productsInEditing.has(product.id);
+
+        return hasStock || isInEditing;
+      });
+
+      setProducts(availableProducts);
 
       const itemsForm: SaleItemForm[] = saleData.items.map(item => ({
         product_id: item.product_id ?? '',

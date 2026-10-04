@@ -13,6 +13,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ActivityIndicator, Text, TextInput } from 'react-native-paper';
+import { PAYMENT_METHODS, normalizePaymentMethod } from '@/constants/PaymentMethods';
 
 export default function EditSaleScreen() {
   const { user } = useAuth();
@@ -35,7 +36,6 @@ export default function EditSaleScreen() {
       if (item.product_id === productId){ // "===" evita conversões automáticas de tipo
         return total + item.quantity;
       }
-
       return total;
     }, 0);
   };
@@ -104,7 +104,7 @@ export default function EditSaleScreen() {
       setFormData({
         customer_name: saleData.customer_name,
         status: saleData.status,
-        payment_method: saleData.payment_method || 'PIX'
+        payment_method: normalizePaymentMethod(saleData.payment_method) || 'PIX'
       });
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
@@ -447,12 +447,7 @@ export default function EditSaleScreen() {
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Método de Pagamento</Text>
                 <View style={styles.paymentGrid}>
-                  {[
-                    { label: 'Pix', value: 'Pix', color: '#10b981' },
-                    { label: 'Dinheiro', value: 'Dinheiro', color: '#059669' },
-                    { label: 'Débito', value: 'Cartão Débito', color: '#0891b2' },
-                    { label: 'Crédito', value: 'Cartão Crédito', color: '#8b5cf6' }
-                  ].map((method) => (
+                  {PAYMENT_METHODS.map((method) => (
                     <TouchableOpacity
                       key={method.value}
                       onPress={() => setFormData({ ...formData, payment_method: method.value })}
@@ -839,8 +834,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.green,
   },
   statusButtonPending: {
-    borderColor: 'transparent',
-    backgroundColor: COLORS.warning,
+    borderColor: COLORS.error,
+    backgroundColor: COLORS.error,
   },
   statusLabel: {
     fontSize: 14,

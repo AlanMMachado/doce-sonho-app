@@ -1,11 +1,13 @@
 import { COLORS } from '@/constants/Colors';
+import { PAYMENT_METHODS, normalizePaymentMethod } from '@/constants/PaymentMethods';
 import { Sale, SaleItem } from '@/types/Sale';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Edit, Trash2 } from 'lucide-react-native';
+import { CreditCard, Edit, Trash2 } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
+
 
 type ProductNameResolver = (productId: string | null, item?: SaleItem) => string;
 
@@ -30,6 +32,11 @@ export default function SaleCard({
 }: SaleCardProps) {
   const isPaid = sale.status === 'PAGO';
   const isPartial = sale.status === 'PENDENTE' && sale.amount_paid > 0;
+  const normalizedPaymentMethod = normalizePaymentMethod(sale.payment_method);
+  const paymentMethodConfig = PAYMENT_METHODS.find(
+    method => method.value === normalizedPaymentMethod
+  );
+
 
   return (
     <View style={[styles.saleItem, isPaid ? styles.saleItemPaid : isPartial ? styles.saleItemPartial : styles.saleItemPending]}>
@@ -63,9 +70,36 @@ export default function SaleCard({
               ? `R$ ${sale.amount_paid.toFixed(2)} / ${sale.total_price.toFixed(2)}`
               : `R$ ${sale.total_price.toFixed(2)}`}
           </Text>
-          <Text style={[styles.statusLabel, isPaid ? styles.statusLabelPaid : isPartial ? styles.statusLabelPartial : styles.statusLabelPending]}>
-            {'● '}{isPaid ? 'Pago' : isPartial ? 'Parcial' : 'Pendente'}
+
+          <Text
+            style={[
+              styles.statusLabel,
+              isPaid
+                ? styles.statusLabelPaid
+                : isPartial
+                  ? styles.statusLabelPartial
+                  : styles.statusLabelPending,
+            ]}
+          >
+            {'● '}{isPaid ? 'PAGO' : isPartial ? 'PARCIAL' : 'PENDENTE'}
           </Text>
+
+          <View style={styles.paymentMethodRow}>
+            <CreditCard
+              size={12}
+              color={paymentMethodConfig?.color ?? COLORS.textMedium}
+            />
+            <Text
+              style={[
+                styles.paymentMethodText,
+                {
+                  color: paymentMethodConfig?.color ?? COLORS.textMedium,
+                },
+              ]}
+            >
+              {paymentMethodConfig?.label ?? 'Não informado'}
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -106,7 +140,7 @@ const styles = StyleSheet.create({
   saleItem: { paddingVertical: 12, paddingHorizontal: 16, backgroundColor: COLORS.white, borderRadius: 8, borderWidth: 1, borderColor: COLORS.borderGray, borderLeftWidth: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2, marginBottom: 12 },
   saleItemPaid: { borderLeftColor: COLORS.green },
   saleItemPartial: { borderLeftColor: COLORS.info },
-  saleItemPending: { borderLeftColor: COLORS.warning },
+  saleItemPending: { borderLeftColor: COLORS.error },
   saleContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   saleInfo: { flex: 1, flexDirection: 'column' },
   saleCustomer: { fontSize: 14, fontWeight: '600', color: COLORS.textDark, marginBottom: 2 },
@@ -115,11 +149,11 @@ const styles = StyleSheet.create({
   saleQuantity: { color: COLORS.mediumBlue, fontWeight: 'bold' },
   saleDate: { fontSize: 11, color: COLORS.textLight, marginTop: 4 },
   saleValues: { alignItems: 'flex-end', marginLeft: 12 },
-  salePrice: { fontSize: 15, fontWeight: 'bold', color: COLORS.textDark, marginBottom: 4 },
-  statusLabel: { fontSize: 11, fontWeight: 'bold' },
+  salePrice: { fontSize: 20, fontWeight: 'bold', color: COLORS.textDark, marginBottom: 2 },
+  statusLabel: { fontSize: 12, fontWeight: 'bold', marginBottom: 2 },
   statusLabelPaid: { color: COLORS.green },
   statusLabelPartial: { color: COLORS.info },
-  statusLabelPending: { color: COLORS.warning },
+  statusLabelPending: { color: COLORS.error },
   actionsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: COLORS.borderGray },
   markPaidButton: { backgroundColor: COLORS.green, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
   markPaidText: { color: COLORS.white, fontSize: 12, fontWeight: 'bold' },
@@ -128,4 +162,13 @@ const styles = StyleSheet.create({
   editButtonText: { fontSize: 12, fontWeight: '600', color: COLORS.mediumBlue },
   deleteButton: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.error },
   deleteButtonText: { fontSize: 12, fontWeight: '600', color: COLORS.error },
+  paymentMethodRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  paymentMethodText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
 });

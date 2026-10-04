@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ActivityIndicator, Text, TextInput } from 'react-native-paper';
+import { PAYMENT_METHODS } from '@/constants/PaymentMethods';
 
 export default function NewSaleScreen() {
   const { user } = useAuth();
@@ -27,7 +28,7 @@ export default function NewSaleScreen() {
   const [formData, setFormData] = useState({
     customer_name: '',
     status: 'PENDENTE' as 'PAGO' | 'PENDENTE',
-    payment_method: 'Pix'
+    payment_method: 'PIX'
   });
 
   const loadProducts = async () => {
@@ -373,12 +374,7 @@ export default function NewSaleScreen() {
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Método de Pagamento</Text>
                 <View style={styles.paymentGrid}>
-                  {[
-                    { label: 'Pix', value: 'Pix', color: '#10b981' },
-                    { label: 'Dinheiro', value: 'Dinheiro', color: '#059669' },
-                    { label: 'Débito', value: 'Cartão Débito', color: '#0891b2' },
-                    { label: 'Crédito', value: 'Cartão Crédito', color: '#8b5cf6' }
-                  ].map((method) => (
+                  {PAYMENT_METHODS.map((method) => (
                     <TouchableOpacity
                       key={method.value}
                       onPress={() => setFormData({ ...formData, payment_method: method.value })}
@@ -757,8 +753,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.green,
   },
   statusButtonPending: {
-    borderColor: COLORS.warning,
-    backgroundColor: COLORS.warning,
+    borderColor: COLORS.error,
+    backgroundColor: COLORS.error,
   },
   statusEmoji: {
     fontSize: 24,

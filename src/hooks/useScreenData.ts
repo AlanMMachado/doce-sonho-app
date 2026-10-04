@@ -14,6 +14,7 @@ export function useScreenData(
     useCallback(() => {
       setLoading(true);
       loadFnRef.current().finally(() => setLoading(false));
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- dependências são fornecidas pelos componentes consumidores.
     }, deps)
   );
 

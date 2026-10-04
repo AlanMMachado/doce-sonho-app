@@ -24,14 +24,16 @@ function TabIcon({ color, focused, Icon }: { color: string; focused: boolean; Ic
 }
 
 function renderLabel(label: string) {
-  return ({ focused, color }: { focused: boolean; color: string }) => (
-    <View style={styles.labelContainer}>
-      <Text style={[styles.iconLabel, { color: focused ? color : COLORS.textLight }]} allowFontScaling={false}>
-        {label}
-      </Text>
-      <View style={[styles.labelIndicator, { width: focused ? 26 : 0, backgroundColor: focused ? color : 'transparent' }]} />
-    </View>
-  );
+  return function TabLabel({ focused, color }: { focused: boolean; color: string }) {
+    return (
+      <View style={styles.labelContainer}>
+        <Text style={[styles.iconLabel, { color: focused ? color : COLORS.textLight }]} allowFontScaling={false}>
+          {label}
+        </Text>
+        <View style={[styles.labelIndicator, { width: focused ? 26 : 0, backgroundColor: focused ? color : 'transparent' }]} />
+      </View>
+    );
+  };
 }
 
 export default function TabLayout() {

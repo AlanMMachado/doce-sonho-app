@@ -31,7 +31,7 @@ export default function ModernInput({
       Animated.timing(translateX, { toValue: 6, duration: 55, useNativeDriver: true }),
       Animated.timing(translateX, { toValue: 0, duration: 55, useNativeDriver: true }),
     ]).start();
-  }, [error]);
+  }, [error, translateX]);
 
   return (
     <Animated.View style={[styles.container, { transform: [{ translateX }] }]}>

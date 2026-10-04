@@ -16,6 +16,30 @@ interface CustomerSearchInputProps {
   error?: boolean;
 }
 
+function normalizeName(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function calculateSimilarity(name1: string, name2: string): number {
+  const n1 = normalizeName(name1);
+  const n2 = normalizeName(name2);
+
+  if (n1 === n2) return 1;
+  if (n1.includes(n2) || n2.includes(n1)) return 0.8;
+
+  const words1 = n1.split(' ');
+  const words2 = n2.split(' ');
+  const common = words1.filter(w => words2.some(w2 => w2.includes(w) || w.includes(w2)));
+
+  return common.length / Math.max(words1.length, words2.length);
+}
+
 export default function CustomerSearchInput({
   value,
   onChangeText,
@@ -34,52 +58,22 @@ export default function CustomerSearchInput({
   const isSelectingRef = useRef(false);
 
   useEffect(() => {
+    const loadCustomers = async () => {
+      try {
+        setLoading(true);
+        const data = await CustomerService.getAll(user!.id);
+        setCustomers(data);
+      } catch (error) {
+        console.error('Erro ao carregar clientes:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     loadCustomers();
-  }, []);
+  }, [user]);
 
-  useEffect(() => {
-    if (value.trim().length > 0) {
-      filterSuggestions(value);
-    } else {
-      setSuggestions([]);
-      setSelectedCustomer(null);
-    }
-  }, [value, customers]);
-
-  // Única fonte de verdade para showDropdown e onDropdownStateChange
-  useEffect(() => {
-    const open = !isSelectingRef.current && suggestions.length > 0 && value.trim().length >= 2;
-    setShowDropdown(open);
-    onDropdownStateChange?.(open);
-  }, [suggestions, value, onDropdownStateChange]);
-
-  const loadCustomers = async () => {
-    try {
-      setLoading(true);
-      const data = await CustomerService.getAll(user!.id);
-      setCustomers(data);
-    } catch (error) {
-      console.error('Erro ao carregar clientes:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const normalizeName = (name: string): string =>
-    name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
-
-  const calculateSimilarity = (name1: string, name2: string): number => {
-    const n1 = normalizeName(name1);
-    const n2 = normalizeName(name2);
-    if (n1 === n2) return 1;
-    if (n1.includes(n2) || n2.includes(n1)) return 0.8;
-    const words1 = n1.split(' ');
-    const words2 = n2.split(' ');
-    const common = words1.filter(w => words2.some(w2 => w2.includes(w) || w.includes(w2)));
-    return common.length / Math.max(words1.length, words2.length);
-  };
-
-  const filterSuggestions = (text: string) => {
+  const filterSuggestions = useCallback((text: string) => {
     if (text.trim().length < 2) {
       setSuggestions([]);
       return;
@@ -91,7 +85,23 @@ export default function CustomerSearchInput({
       .slice(0, 5)
       .map(i => i.customer);
     setSuggestions(filtered);
-  };
+  }, [customers]);
+
+  useEffect(() => {
+    if (value.trim().length > 0) {
+      filterSuggestions(value);
+    } else {
+      setSuggestions([]);
+      setSelectedCustomer(null);
+    }
+  }, [value, filterSuggestions]);
+
+  // Única fonte de verdade para showDropdown e onDropdownStateChange
+  useEffect(() => {
+    const open = !isSelectingRef.current && suggestions.length > 0 && value.trim().length >= 2;
+    setShowDropdown(open);
+    onDropdownStateChange?.(open);
+  }, [suggestions, value, onDropdownStateChange]);
 
   const selectCustomer = useCallback((customer: Customer) => {
     if (isSelectingRef.current) return;

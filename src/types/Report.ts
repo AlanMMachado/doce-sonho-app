@@ -8,9 +8,9 @@ export interface ReportResponse {
   totalSold: number;
   totalPending: number;
   quantitySold: number;
-  topProducts: Array<{
+  topProducts: {
     product: string;
     quantity: number;
     totalValue: number;
-  }>;
+  }[];
 }

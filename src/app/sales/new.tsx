@@ -12,10 +12,8 @@ import { Product } from '@/types/Product';
 import { SaleItemForm } from '@/types/Sale';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Dimensions, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ActivityIndicator, Text, TextInput } from 'react-native-paper';
-
-const { width } = Dimensions.get('window');
 
 export default function NewSaleScreen() {
   const { user } = useAuth();

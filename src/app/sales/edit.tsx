@@ -11,10 +11,8 @@ import { Sale, SaleItemForm } from '@/types/Sale';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { Dimensions, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ActivityIndicator, Text, TextInput } from 'react-native-paper';
-
-const { width } = Dimensions.get('window');
 
 export default function EditSaleScreen() {
   const { user } = useAuth();
@@ -49,7 +47,7 @@ export default function EditSaleScreen() {
     return currentStock + originalQuantity;
   }
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -115,14 +113,14 @@ export default function EditSaleScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, id, router]);
 
   useFocusEffect(
     useCallback(() => {
       if (id) {
         loadData();
       }
-    }, [id])
+    }, [id, loadData])
   );
 
   const setProductQuantity = (productId: string, quantity: number) => {

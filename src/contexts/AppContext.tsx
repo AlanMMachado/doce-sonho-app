@@ -2,7 +2,7 @@ import { ProfileService } from '@/service/profileService';
 import { Profile } from '@/types/Profile';
 import { Sale } from '@/types/Sale';
 import { Shipment } from '@/types/Shipment';
-import React, { createContext, ReactNode, useContext, useEffect, useReducer } from 'react';
+import React, { createContext, ReactNode, useCallback, useContext, useEffect, useReducer } from 'react';
 import { useAuth } from './AuthContext';
 
 interface AppState {
@@ -62,24 +62,26 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const userId = user?.id;
   const [state, dispatch] = useReducer(appReducer, initialState);
 
-  const reloadProfile = async () => {
-    if (!user) return null;
+  const reloadProfile = useCallback(async () => {
+    if (!userId) return null;
+
     try {
-      const profile = await ProfileService.get(user.id);
+      const profile = await ProfileService.get(userId);
       dispatch({ type: 'SET_PROFILE', payload: profile });
       return profile;
     } catch (error) {
       console.error('Erro ao recarregar perfil:', error);
       throw error;
     }
-  };
+  }, [userId]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     reloadProfile();
-  }, [user?.id]);
+  }, [userId, reloadProfile]);
 
   return (
     <AppContext.Provider value={{ state, dispatch, reloadProfile }}>

@@ -25,19 +25,19 @@ export default function NewShipmentScreen() {
   const [products, setProducts] = useState<ShipmentProductForm[]>([]);
 
   useEffect(() => {
-    loadProductConfigs();
-  }, []);
+    const loadProductConfigs = async () => {
+      try {
+        const configs = await ProductConfigService.getAll(user!.id);
+        setProductConfigs(configs);
+      } catch (error) {
+        console.error('Erro ao carregar configurações:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const loadProductConfigs = async () => {
-    try {
-      const configs = await ProductConfigService.getAll(user!.id);
-      setProductConfigs(configs);
-    } catch (error) {
-      console.error('Erro ao carregar configurações:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    loadProductConfigs();
+  }, [user]);
 
   const addProduct = (config: ProductConfig) => {
     const newProduct: ShipmentProductForm = {

@@ -63,7 +63,7 @@ export default function ProfileScreen() {
       });
       await reloadProfile();
       setSuccessModalVisible(true);
-    } catch (error) {
+    } catch {
       Alert.alert('Erro', 'Não foi possível salvar o perfil.');
     } finally {
       setSaving(false);

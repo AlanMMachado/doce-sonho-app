@@ -1,6 +1,6 @@
 import { COLORS } from '@/constants/Colors';
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, View, ViewStyle } from 'react-native';
+import { Animated, View, ViewStyle } from 'react-native';
 
 interface SkeletonBlockProps {
   width?: string | number;

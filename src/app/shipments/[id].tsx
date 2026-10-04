@@ -10,8 +10,6 @@ import { SaleService } from '@/service/saleService';
 import { ShipmentService } from '@/service/shipmentService';
 import { Sale } from '@/types/Sale';
 import { Shipment } from '@/types/Shipment';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Archive, DollarSign, Edit, Package, ShoppingCart, Trash2, XCircle } from 'lucide-react-native';
@@ -95,18 +93,6 @@ export default function ShipmentDetailsScreen() {
     } finally {
       setDeleteSaleModalVisible(false);
       setSaleToDelete(null);
-    }
-  };
-
-
-  const formatDate = (dateString: string) => {
-    if (!dateString || dateString === 'null' || dateString === '') {
-      return 'Data não informada';
-    }
-    try {
-      return format(new Date(dateString), "dd 'de' MMMM, yyyy", { locale: ptBR });
-    } catch {
-      return 'Data inválida';
     }
   };
 

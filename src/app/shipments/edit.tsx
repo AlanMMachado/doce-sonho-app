@@ -23,13 +23,8 @@ export default function EditShipmentScreen() {
   const [productConfigs, setProductConfigs] = useState<ProductConfig[]>([]);
   const [products, setProducts] = useState<ShipmentProductForm[]>([]);
 
-  useFocusEffect(
-    useCallback(() => {
-      if (id) loadData();
-    }, [id])
-  );
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const shipment = await ShipmentService.getById(user!.id, id);
@@ -54,7 +49,13 @@ export default function EditShipmentScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (id) loadData();
+    }, [id, loadData])
+  );
 
   const addProduct = (config: ProductConfig) => {
     setProducts([...products, {

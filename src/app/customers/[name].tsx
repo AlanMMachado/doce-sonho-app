@@ -73,6 +73,7 @@ export default function CustomerDetailsScreen() {
   const [editName, setEditName] = useState('');
   const [editError, setEditError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [deletingCustomer, setDeletingCustomer] = useState(false);
   const [partialModalVisible, setPartialModalVisible] = useState(false);
   const [partialAmountCents, setPartialAmountCents] = useState(0);
   const [partialError, setPartialError] = useState('');
@@ -176,15 +177,18 @@ export default function CustomerDetailsScreen() {
   };
 
   const handleDelete = async () => {
+    if (deletingCustomer || !customer) return;
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
-      setActionLoading(true);
+      setDeletingCustomer(true);
       await CustomerService.delete(user!.id, customer!.id);
       router.back();
     } catch (error) {
       console.error('Erro ao excluir cliente:', error);
       alert('Erro ao excluir cliente. Tente novamente.');
     } finally {
-      setActionLoading(false);
+      setDeletingCustomer(false);
       setDeleteModalVisible(false);
     }
   };
@@ -386,6 +390,7 @@ export default function CustomerDetailsScreen() {
         primaryAction={{
           label: 'Confirmar',
           onPress: () => { if (saleToMark) markAsPaid(saleToMark); },
+          success: true,
           loading: markingPaid,
         }}
         secondaryAction={{
@@ -500,7 +505,7 @@ export default function CustomerDetailsScreen() {
         visible={deleteModalVisible}
         onClose={() => setDeleteModalVisible(false)}
         title="Excluir Cliente"
-        primaryAction={{ label: 'Excluir', onPress: handleDelete, destructive: true }}
+        primaryAction={{ label: 'Excluir', onPress: handleDelete, destructive: true, loading: deletingCustomer }}
         secondaryAction={{ label: 'Cancelar', onPress: () => setDeleteModalVisible(false) }}>
         <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>
           O perfil de {customer?.name} será removido permanentemente.{'\n\n'}As vendas anteriores continuarão acessíveis no histórico de cada remessa.

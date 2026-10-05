@@ -30,6 +30,8 @@ export default function ShipmentDetailsScreen() {
   const [saleToMark, setSaleToMark] = useState<Sale | null>(null);
   const [markingPaid, setMarkingPaid] = useState(false);
   const [itemsShown, setItemsShown] = useState(10);
+  const [deletingShipment, setDeletingShipment] = useState(false);
+  const [deletingSale, setDeletingSale] = useState(false);
 
   const loadDetails = async () => {
     try {
@@ -55,12 +57,17 @@ export default function ShipmentDetailsScreen() {
   const { loading, refreshing, onRefresh } = useScreenData(loadDetails, [id]);
 
   const handleDelete = async () => {
+    if (deletingShipment) return;
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setDeletingShipment(true);
     try {
       await ShipmentService.delete(user!.id, id);
       router.back();
     } catch (error) {
       console.error('Erro ao excluir remessa:', error);
     } finally {
+      setDeletingShipment(false);
       setDeleteModalVisible(false);
     }
   };
@@ -82,8 +89,10 @@ export default function ShipmentDetailsScreen() {
   };
 
   const handleDeleteSale = async () => {
-    if (!saleToDelete) return;
+    if (!saleToDelete || deletingSale) return;
 
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setDeletingSale(true);
     try {
       await SaleService.delete(user!.id, saleToDelete.id);
       await loadDetails();
@@ -91,6 +100,7 @@ export default function ShipmentDetailsScreen() {
       console.error('Erro ao excluir venda:', error);
       alert('Erro ao excluir venda. Tente novamente.');
     } finally {
+      setDeletingSale(false);
       setDeleteSaleModalVisible(false);
       setSaleToDelete(null);
     }
@@ -332,7 +342,7 @@ export default function ShipmentDetailsScreen() {
         visible={deleteModalVisible}
         onClose={() => setDeleteModalVisible(false)}
         title="Excluir Remessa"
-        primaryAction={{ label: 'Excluir', onPress: handleDelete, destructive: true }}
+        primaryAction={{ label: 'Excluir', onPress: handleDelete, destructive: true, loading: deletingShipment }}
         secondaryAction={{ label: 'Cancelar', onPress: () => setDeleteModalVisible(false) }}>
         <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>
           Tem certeza que deseja excluir esta remessa? Os produtos serão removidos, mas o histórico de vendas será preservado.
@@ -343,7 +353,7 @@ export default function ShipmentDetailsScreen() {
         visible={deleteSaleModalVisible}
         onClose={() => { setDeleteSaleModalVisible(false); setSaleToDelete(null); }}
         title="Excluir Venda"
-        primaryAction={{ label: 'Excluir', onPress: handleDeleteSale, destructive: true }}
+        primaryAction={{ label: 'Excluir', onPress: handleDeleteSale, destructive: true, loading: deletingSale }}
         secondaryAction={{ label: 'Cancelar', onPress: () => { setDeleteSaleModalVisible(false); setSaleToDelete(null); } }}>
         <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>
           Tem certeza que deseja excluir a venda de {saleToDelete?.customer_name}? Esta ação não pode ser desfeita.
@@ -357,6 +367,7 @@ export default function ShipmentDetailsScreen() {
         primaryAction={{
           label: 'Confirmar',
           onPress: () => { if (saleToMark) markAsPaid(saleToMark); },
+          success: true,
           loading: markingPaid,
         }}
         secondaryAction={{

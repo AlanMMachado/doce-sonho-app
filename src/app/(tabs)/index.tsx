@@ -244,6 +244,7 @@ export default function DashboardScreen() {
         primaryAction={{
           label: 'Confirmar',
           onPress: () => { if (saleToMark) markAsPaid(saleToMark); },
+          success: true,
           loading: markingPaid,
         }}
         secondaryAction={{
@@ -276,11 +277,11 @@ const styles = StyleSheet.create({
   goalTitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.textDark },
   goalPercentage: { fontSize: 24, fontWeight: 'bold', color: COLORS.mediumBlue },
   progressContainer: { height: 12, backgroundColor: COLORS.borderGray, borderRadius: 6, overflow: 'hidden', marginBottom: 12 },
-  progressFillPaid: { height: '100%', backgroundColor: COLORS.mediumBlue, borderRadius: 6, position: 'absolute', top: 0, left: 0 },
+  progressFillPaid: { height: '100%', backgroundColor: COLORS.green, borderRadius: 6, position: 'absolute', top: 0, left: 0 },
   progressFillPending: { height: '100%', backgroundColor: COLORS.error, borderRadius: 6, position: 'absolute', top: 0, left: 0 },
   goalFooter: { flexDirection: 'column', gap: 4 },
   goalText: { fontSize: 12, color: COLORS.textMedium, fontWeight: '500' },
-  goalTextPaid: { color: COLORS.mediumBlue, fontWeight: '600' },
+  goalTextPaid: { color: COLORS.green, fontWeight: '600' },
   goalTextPending: { color: COLORS.error, fontWeight: '600' },
   fab: { position: 'absolute', bottom: 16, right: 16, width: 56, height: 56, borderRadius: 28, backgroundColor: COLORS.mediumBlue, justifyContent: 'center', alignItems: 'center', elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 },
   fabText: { fontSize: 32, color: COLORS.white, fontWeight: '300' },

@@ -7,6 +7,7 @@ interface Action {
   label: string;
   onPress: () => void | Promise<void>;
   destructive?: boolean;
+  success?: boolean;
   loading?: boolean;
   disabled?: boolean;
 }
@@ -32,6 +33,7 @@ export default function ModernModal({
   children,
   centered,
 }: ModernModalProps) {
+  const isBusy = primaryAction?.loading === true;
   const inner = (
     <>
       {icon && <View style={styles.iconContainer}>{icon}</View>}
@@ -42,7 +44,11 @@ export default function ModernModal({
           <TouchableOpacity
             style={[
               styles.button,
-              primaryAction.destructive ? styles.destructiveButton : styles.primaryButton,
+              primaryAction.destructive
+                ? styles.destructiveButton
+                : primaryAction.success
+                  ? styles.successButton
+                  : styles.primaryButton,
               primaryAction.disabled && styles.disabledButton,
             ]}
             onPress={primaryAction.onPress}
@@ -57,7 +63,7 @@ export default function ModernModal({
           <TouchableOpacity
             style={styles.secondaryButton}
             onPress={secondaryAction.onPress}
-            disabled={secondaryAction.loading}
+            disabled={secondaryAction.loading || isBusy}
             activeOpacity={0.8}>
             <Text style={styles.secondaryButtonText}>{secondaryAction.label}</Text>
           </TouchableOpacity>
@@ -67,15 +73,32 @@ export default function ModernModal({
   );
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Modal
+        visible={visible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!isBusy) onClose();
+        }}
+      >
       {centered ? (
         <View style={styles.overlayCentered}>
-          <View style={styles.backdrop} onTouchEnd={onClose} />
+          <View
+            style={styles.backdrop}
+            onTouchEnd={() => {
+              if (!isBusy) onClose();
+            }}
+          />
           <View style={styles.sheetCentered}>{inner}</View>
         </View>
       ) : (
         <View style={styles.overlay}>
-          <View style={styles.backdrop} onTouchEnd={onClose} />
+          <View
+            style={styles.backdrop}
+            onTouchEnd={() => {
+              if (!isBusy) onClose();
+            }}
+          />
           <View style={styles.sheet}>{inner}</View>
         </View>
       )}
@@ -120,6 +143,7 @@ const styles = StyleSheet.create({
   actions: { width: '100%', gap: 10 },
   button: { width: '100%', borderRadius: 12, paddingVertical: 15, alignItems: 'center' },
   primaryButton: { backgroundColor: COLORS.mediumBlue },
+  successButton: { backgroundColor: COLORS.green },
   destructiveButton: { backgroundColor: COLORS.error },
   disabledButton: { backgroundColor: COLORS.borderGray },
   primaryButtonText: { fontSize: 15, fontWeight: '700', color: COLORS.white },

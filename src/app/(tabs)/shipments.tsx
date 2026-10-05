@@ -9,6 +9,7 @@ import { ShipmentService } from '@/service/shipmentService';
 import { Shipment } from '@/types/Shipment';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { Edit, Power, Trash2 } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -21,6 +22,7 @@ export default function ShipmentsScreen() {
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [selectedShipmentId, setSelectedShipmentId] = useState<string | null>(null);
+  const [deletingShipment, setDeletingShipment] = useState(false);
 
   const loadShipments = async () => {
     try {
@@ -34,16 +36,19 @@ export default function ShipmentsScreen() {
   const { loading, refreshing, onRefresh } = useScreenData(loadShipments);
 
   const handleDelete = async () => {
-    if (selectedShipmentId) {
-      try {
-        await ShipmentService.delete(user!.id, selectedShipmentId);
-        await loadShipments();
-      } catch (error) {
-        console.error('Erro ao excluir remessa:', error);
-      } finally {
-        setDeleteModalVisible(false);
-        setSelectedShipmentId(null);
-      }
+    if (!selectedShipmentId || deletingShipment) return;
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setDeletingShipment(true);
+    try {
+      await ShipmentService.delete(user!.id, selectedShipmentId);
+      await loadShipments();
+    } catch (error) {
+      console.error('Erro ao excluir remessa:', error);
+    } finally {
+      setDeletingShipment(false);
+      setDeleteModalVisible(false);
+      setSelectedShipmentId(null);
     }
   };
 
@@ -228,7 +233,7 @@ export default function ShipmentsScreen() {
         visible={deleteModalVisible}
         onClose={() => { setDeleteModalVisible(false); setSelectedShipmentId(null); }}
         title="Excluir Remessa"
-        primaryAction={{ label: 'Excluir', onPress: handleDelete, destructive: true }}
+        primaryAction={{ label: 'Excluir', onPress: handleDelete, destructive: true, loading: deletingShipment }}
         secondaryAction={{ label: 'Cancelar', onPress: () => { setDeleteModalVisible(false); setSelectedShipmentId(null); } }}>
         <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>
           Tem certeza que deseja excluir esta remessa? Os produtos serão removidos, mas o histórico de vendas será preservado.

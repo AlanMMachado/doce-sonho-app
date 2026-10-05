@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useScreenData } from '@/hooks/useScreenData';
 import { ProductConfigService } from '@/service/productConfigService';
 import { ProductConfig } from '@/types/ProductConfig';
+import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { Trash2 } from 'lucide-react-native';
 import React, { useState } from 'react';
@@ -18,6 +19,7 @@ export default function ProductsConfigScreen() {
   const [productConfigs, setProductConfigs] = useState<ProductConfig[]>([]);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [productToDelete, setProductToDelete] = useState<ProductConfig | null>(null);
+  const [deletingProductConfig, setDeletingProductConfig] = useState(false);
 
   const loadProductConfigs = async () => {
     try {
@@ -32,7 +34,10 @@ export default function ProductsConfigScreen() {
   const { loading } = useScreenData(loadProductConfigs);
 
   const handleDelete = async () => {
-    if (!productToDelete) return;
+    if (!productToDelete || deletingProductConfig) return;
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setDeletingProductConfig(true);
     try {
       await ProductConfigService.delete(user!.id, productToDelete.id);
       await loadProductConfigs();
@@ -40,6 +45,7 @@ export default function ProductsConfigScreen() {
       console.error('Erro ao excluir configuração:', error);
       Alert.alert('Erro', 'Não foi possível excluir a configuração.');
     } finally {
+      setDeletingProductConfig(false);
       setDeleteModalVisible(false);
       setProductToDelete(null);
     }
@@ -127,7 +133,7 @@ export default function ProductsConfigScreen() {
         visible={deleteModalVisible}
         onClose={() => { setDeleteModalVisible(false); setProductToDelete(null); }}
         title="Excluir Configuração"
-        primaryAction={{ label: 'Excluir', onPress: handleDelete, destructive: true }}
+        primaryAction={{ label: 'Excluir', onPress: handleDelete, destructive: true, loading: deletingProductConfig }}
         secondaryAction={{ label: 'Cancelar', onPress: () => { setDeleteModalVisible(false); setProductToDelete(null); } }}>
         <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>
           Deseja realmente excluir a configuração de {productToDelete?.type}{productToDelete?.custom_type ? ` (${productToDelete.custom_type})` : ''}?

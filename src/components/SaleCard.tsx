@@ -3,7 +3,7 @@ import { PAYMENT_METHODS, normalizePaymentMethod } from '@/constants/PaymentMeth
 import { Sale, SaleItem } from '@/types/Sale';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CreditCard, Edit, Trash2 } from 'lucide-react-native';
+import { Edit, Trash2 } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
@@ -81,14 +81,10 @@ export default function SaleCard({
                   : styles.statusLabelPending,
             ]}
           >
-            {'● '}{isPaid ? 'PAGO' : isPartial ? 'PARCIAL' : 'PENDENTE'}
+            {isPaid ? 'Pago' : isPartial ? 'Parcial' : 'Pendente'}
           </Text>
 
           <View style={styles.paymentMethodRow}>
-            <CreditCard
-              size={12}
-              color={paymentMethodConfig?.color ?? COLORS.textMedium}
-            />
             <Text
               style={[
                 styles.paymentMethodText,
@@ -149,7 +145,7 @@ const styles = StyleSheet.create({
   saleQuantity: { color: COLORS.mediumBlue, fontWeight: 'bold' },
   saleDate: { fontSize: 11, color: COLORS.textLight, marginTop: 4 },
   saleValues: { alignItems: 'flex-end', marginLeft: 12 },
-  salePrice: { fontSize: 20, fontWeight: 'bold', color: COLORS.textDark, marginBottom: 2 },
+  salePrice: { fontSize: 18, fontWeight: 'bold', color: COLORS.textDark, marginBottom: 2 },
   statusLabel: { fontSize: 12, fontWeight: 'bold', marginBottom: 2 },
   statusLabelPaid: { color: COLORS.green },
   statusLabelPartial: { color: COLORS.info },
@@ -168,7 +164,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   paymentMethodText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 'bold',
   },
 });

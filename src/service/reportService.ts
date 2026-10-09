@@ -69,6 +69,7 @@ export const ReportService = {
     const saleItems = (sales ?? []).flatMap(sale => (sale.items as any[]) ?? []);
     const productIds = [...new Set(
       saleItems
+        .filter(item => !item.product_type?.trim() || !item.product_flavor?.trim())
         .map(item => item.product_id)
         .filter((id): id is string => Boolean(id))
     )];

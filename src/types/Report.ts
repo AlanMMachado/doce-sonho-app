@@ -1,6 +1,8 @@
+export type ReportView = 'day' | 'week' | 'month' | 'year';
+
 export interface ReportParams {
   period?: 'day' | 'week' | 'month';
-  view?: 'month' | 'year';
+  view?: ReportView;
   year?: number;
   month?: number;
   startDate?: string;
@@ -15,6 +17,7 @@ export interface ReportSeriesPoint {
 
 export interface ReportResponse {
   totalSold: number;
+  totalReceived: number;
   totalPending: number;
   quantitySold: number;
   series: ReportSeriesPoint[];

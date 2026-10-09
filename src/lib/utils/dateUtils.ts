@@ -18,6 +18,12 @@ function parseLocalDate(value: string): Date {
   return new Date(year, month - 1, day);
 }
 
+export function addLocalDays(value: string, amount: number): string {
+  const date = parseLocalDate(value);
+  date.setDate(date.getDate() + amount);
+  return formatLocalDate(date);
+}
+
 export function getUtcDateRange(startDate: string, endDate: string): { start: string; endExclusive: string } {
   const start = parseLocalDate(startDate);
   const endExclusive = parseLocalDate(endDate);

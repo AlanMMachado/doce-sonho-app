@@ -73,7 +73,7 @@ export default function CustomersScreen() {
           <View style={styles.summaryContainer}>
             {[1, 2, 3].map(i => (
               <View key={i} style={styles.summaryCard}>
-                <SkeletonBlock width={32} height={32} style={{ borderRadius: 16, marginBottom: 8 }} />
+                <SkeletonBlock width={40} height={40} style={{ borderRadius: 12, marginBottom: 8 }} />
                 <SkeletonBlock width="70%" height={24} style={{ marginBottom: 4 }} />
                 <SkeletonBlock width="85%" height={12} style={{ marginBottom: 4 }} />
                 <SkeletonBlock width="60%" height={11} />

@@ -4,16 +4,23 @@ import { SkeletonBlock } from '@/components/SkeletonCard';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScreenData } from '@/hooks/useScreenData';
+import { addLocalDays, formatLocalDate } from '@/lib/utils/dateUtils';
 import { ReportService } from '@/service/reportService';
-import { ReportResponse } from '@/types/Report';
-import { ChevronLeft, ChevronRight, Clock, Package, Wallet } from 'lucide-react-native';
+import { ReportResponse, ReportView } from '@/types/Report';
+import { ChevronLeft, ChevronRight, Clock, DollarSign, Wallet } from 'lucide-react-native';
 import React, { useMemo, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
-import Svg, { Line, Polyline } from 'react-native-svg';
+import Svg, { Circle, Line, Polyline } from 'react-native-svg';
 
 const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 const SHORT_MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+const PERIOD_OPTIONS: { value: ReportView; label: string }[] = [
+  { value: 'day', label: 'Hoje' },
+  { value: 'week', label: 'Semana' },
+  { value: 'month', label: 'Mês' },
+  { value: 'year', label: 'Ano' },
+];
 const CHART_METRICS = [
   { value: 'gross', label: 'Bruto', accessibilityLabel: 'Faturamento bruto' },
   { value: 'received', label: 'Recebido', accessibilityLabel: 'Valor recebido' },
@@ -21,17 +28,34 @@ const CHART_METRICS = [
 
 type ChartMetric = (typeof CHART_METRICS)[number]['value'];
 
+function formatDayPeriodLabel(date: string, today: string): string {
+  if (date === today) return 'Hoje';
+  return `${date.slice(8, 10)} ${SHORT_MONTHS[Number(date.slice(5, 7)) - 1]} ${date.slice(0, 4)}`;
+}
+
+function formatWeekPeriodLabel(endDate: string): string {
+  const startDate = addLocalDays(endDate, -6);
+  const startMonth = Number(startDate.slice(5, 7));
+  const endMonth = Number(endDate.slice(5, 7));
+  const startYear = startDate.slice(0, 4);
+  const endYear = endDate.slice(0, 4);
+  const startLabel = `${startDate.slice(8, 10)} ${SHORT_MONTHS[startMonth - 1]}${startYear !== endYear ? ` ${startYear}` : ''}`;
+  const endLabel = `${endDate.slice(8, 10)} ${SHORT_MONTHS[endMonth - 1]} ${endYear}`;
+  return `${startLabel}–${endLabel}`;
+}
+
 function SalesChart({ report, metric }: { report: ReportResponse; metric: ChartMetric }) {
   const width = 340;
   const height = 180;
   const padding = { top: 12, right: 12, bottom: 28, left: 12 };
   const getValue = (point: ReportResponse['series'][number]) => metric === 'gross' ? point.grossValue : point.receivedValue;
   const maxValue = Math.max(...report.series.map(getValue), 1);
-  const points = report.series.map((point, index) => {
+  const chartPoints = report.series.map((point, index) => {
     const x = padding.left + (index / Math.max(report.series.length - 1, 1)) * (width - padding.left - padding.right);
     const y = padding.top + (1 - getValue(point) / maxValue) * (height - padding.top - padding.bottom);
-    return `${x},${y}`;
-  }).join(' ');
+    return { x, y };
+  });
+  const points = chartPoints.map(({ x, y }) => `${x},${y}`).join(' ');
   const labels = (report.series.length <= 12
     ? report.series.map((point, index) => ({ point, index }))
     : report.series
@@ -45,6 +69,7 @@ function SalesChart({ report, metric }: { report: ReportResponse; metric: ChartM
         <Line x1={padding.left} y1={height - padding.bottom} x2={width - padding.right} y2={height - padding.bottom} stroke={COLORS.borderGray} />
         <Line x1={padding.left} y1={padding.top} x2={width - padding.right} y2={padding.top} stroke={COLORS.borderGray} strokeDasharray="4 4" />
         <Polyline points={points} fill="none" stroke={COLORS.mediumBlue} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+        {chartPoints.length === 1 && <Circle cx={chartPoints[0].x} cy={chartPoints[0].y} r="5" fill={COLORS.mediumBlue} />}
       </Svg>
       <View style={styles.chartLabels}>
         {labels.map(({ point, index }) => (
@@ -63,15 +88,19 @@ function SalesChart({ report, metric }: { report: ReportResponse; metric: ChartM
 export default function ReportsScreen() {
   const { user } = useAuth();
   const now = new Date();
-  const [view, setView] = useState<'month' | 'year'>('month');
+  const today = formatLocalDate(now);
+  const [view, setView] = useState<ReportView>('month');
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
+  const [referenceDate, setReferenceDate] = useState(today);
   const [loadedReport, setLoadedReport] = useState<{ key: string; data: ReportResponse } | null>(null);
   const [loadErrorKey, setLoadErrorKey] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
   const [chartMetric, setChartMetric] = useState<ChartMetric>('gross');
   const requestIdRef = useRef(0);
-  const periodKey = `${view}:${year}:${month}`;
+  const periodKey = view === 'day' || view === 'week'
+    ? `${view}:${referenceDate}`
+    : `${view}:${year}:${month}`;
   const report = loadedReport?.key === periodKey ? loadedReport.data : null;
 
   const loadReport = async () => {
@@ -80,7 +109,12 @@ export default function ReportsScreen() {
     setLoadErrorKey(null);
 
     try {
-      const data = await ReportService.generate(user!.id, { view, year, month });
+      const params = view === 'day'
+        ? { view, startDate: referenceDate, endDate: referenceDate }
+        : view === 'week'
+          ? { view, startDate: addLocalDays(referenceDate, -6), endDate: referenceDate }
+          : { view, year, month };
+      const data = await ReportService.generate(user!.id, params);
       if (requestId !== requestIdRef.current) return;
       setLoadedReport({ key: requestedKey, data });
     } catch (error) {
@@ -91,7 +125,7 @@ export default function ReportsScreen() {
     }
   };
 
-  const { loading, refreshing, onRefresh } = useScreenData(loadReport, [view, year, month]);
+  const { loading, refreshing, onRefresh } = useScreenData(loadReport, [view, year, month, referenceDate]);
   const retryReport = async () => {
     setRetrying(true);
     try {
@@ -100,10 +134,41 @@ export default function ReportsScreen() {
       setRetrying(false);
     }
   };
-  const periodLabel = view === 'year' ? String(year) : `${MONTHS[month - 1]} ${year}`;
-  const canGoForward = view === 'year' ? year < now.getFullYear() : year < now.getFullYear() || month < now.getMonth() + 1;
+  const periodLabel = view === 'day'
+    ? formatDayPeriodLabel(referenceDate, today)
+    : view === 'week'
+      ? formatWeekPeriodLabel(referenceDate)
+      : view === 'year'
+        ? String(year)
+        : `${MONTHS[month - 1]} ${year}`;
+  const canGoForward = view === 'day' || view === 'week'
+    ? referenceDate < today
+    : view === 'year'
+      ? year < now.getFullYear()
+      : year < now.getFullYear() || month < now.getMonth() + 1;
+
+  const selectView = (nextView: ReportView) => {
+    setView(nextView);
+    if (nextView === 'day' || nextView === 'week') {
+      setReferenceDate(formatLocalDate());
+    } else {
+      const current = new Date();
+      setYear(current.getFullYear());
+      setMonth(current.getMonth() + 1);
+    }
+  };
 
   const changePeriod = (direction: -1 | 1) => {
+    if (view === 'day') {
+      setReferenceDate(current => addLocalDays(current, direction));
+      return;
+    }
+
+    if (view === 'week') {
+      setReferenceDate(current => addLocalDays(current, direction * 7));
+      return;
+    }
+
     if (view === 'year') {
       setYear(current => current + direction);
       return;
@@ -129,16 +194,18 @@ export default function ReportsScreen() {
   }, [chartMetric, report]);
   const hasCurrentLoadError = loadErrorKey === periodKey;
   const waitingForPeriod = !report && !hasCurrentLoadError;
-  const hasSales = report ? report.totalSold > 0 || report.totalPending > 0 || report.quantitySold > 0 : false;
+  const hasSales = report
+    ? report.totalSold > 0 || report.totalReceived > 0 || report.totalPending > 0 || report.quantitySold > 0
+    : false;
 
   return (
     <View style={styles.container}>
       <Header title="Relatórios" actions={<ConfigMenuButton />} />
       <View style={styles.periodWrapper}>
         <View style={styles.periodContainer}>
-          {(['month', 'year'] as const).map(option => (
-            <TouchableOpacity key={option} onPress={() => setView(option)} style={[styles.periodButton, view === option && styles.periodButtonActive]} accessibilityRole="tab" accessibilityState={{ selected: view === option }}>
-              <Text style={[styles.periodText, view === option && styles.periodTextActive]}>{option === 'month' ? 'Mês' : 'Ano'}</Text>
+          {PERIOD_OPTIONS.map(option => (
+            <TouchableOpacity key={option.value} onPress={() => selectView(option.value)} style={[styles.periodButton, view === option.value && styles.periodButtonActive]} accessibilityRole="tab" accessibilityState={{ selected: view === option.value }}>
+              <Text style={[styles.periodText, view === option.value && styles.periodTextActive]}>{option.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -157,17 +224,19 @@ export default function ReportsScreen() {
         <ScrollView scrollEnabled={false} style={styles.content}>
           <View style={styles.summaryGrid}>
             <View style={[styles.summaryCard, styles.summaryCardPrimary]}>
-              <SkeletonBlock width={40} height={40} style={styles.skeletonIcon} />
-              <View style={styles.summarySkeletonText}>
-                <SkeletonBlock width="35%" height={12} style={styles.skeletonSpacing} />
-                <SkeletonBlock width="45%" height={22} style={styles.skeletonSpacing} />
-                <SkeletonBlock width="55%" height={11} />
+              <View style={styles.summaryPrimaryContent}>
+                <SkeletonBlock width={40} height={40} style={styles.summarySkeletonIcon} />
+                <View style={styles.summarySkeletonText}>
+                  <SkeletonBlock width="35%" height={12} style={styles.skeletonSpacing} />
+                  <SkeletonBlock width="45%" height={22} style={styles.skeletonSpacing} />
+                  <SkeletonBlock width="55%" height={11} />
+                </View>
               </View>
             </View>
             <View style={styles.summarySecondaryRow}>
               {[1, 2].map(i => (
                 <View key={i} style={[styles.summaryCard, styles.summaryCardSecondary]}>
-                  <SkeletonBlock width={32} height={32} style={styles.skeletonIcon} />
+                  <SkeletonBlock width={32} height={32} style={styles.summarySecondarySkeletonIcon} />
                   <SkeletonBlock width="65%" height={12} style={styles.skeletonSpacing} />
                   <SkeletonBlock width="80%" height={20} style={styles.skeletonSpacing} />
                   <SkeletonBlock width="55%" height={11} />
@@ -189,32 +258,32 @@ export default function ReportsScreen() {
             <View style={styles.summaryGrid}>
               <View style={[styles.summaryCard, styles.summaryCardPrimary]}>
                 <View style={styles.summaryPrimaryContent}>
-                  <View style={[styles.summaryIconContainer, styles.summaryIconReceived]}>
-                    <Wallet size={22} color={COLORS.green} strokeWidth={2.2} />
+                  <View style={[styles.summaryIconContainer, styles.summaryIconSold]}>
+                    <Wallet size={22} color={COLORS.mediumBlue} strokeWidth={2.2} />
                   </View>
                   <View style={styles.summaryPrimaryInfo}>
-                    <Text style={styles.summaryLabel}>Recebido</Text>
+                    <Text style={styles.summaryLabel}>Total Vendido</Text>
                     <Text style={[styles.summaryValue, styles.summaryValuePrimary]}>R$ {report.totalSold.toFixed(2)}</Text>
                     <Text style={styles.summarySubtext}>{report.quantitySold} unidades vendidas</Text>
                   </View>
                 </View>
               </View>
               <View style={styles.summarySecondaryRow}>
+                <View style={[styles.summaryCard, styles.summaryCardSecondary, styles.summaryCardReceived]}>
+                  <View style={[styles.summaryIconContainer, styles.summaryIconReceived]}>
+                    <DollarSign size={19} color={COLORS.green} strokeWidth={2.2} />
+                  </View>
+                  <Text style={styles.summaryLabel}>Total Recebido</Text>
+                  <Text style={[styles.summaryValue, styles.summaryValueReceived]}>R$ {report.totalReceived.toFixed(2)}</Text>
+                  <Text style={styles.summarySubtext}>Já recebido</Text>
+                </View>
                 <View style={[styles.summaryCard, styles.summaryCardSecondary, styles.summaryCardPending]}>
                   <View style={[styles.summaryIconContainer, styles.summaryIconPending]}>
-                    <Clock size={19} color={COLORS.yellow} strokeWidth={2.2} />
+                    <Clock size={19} color={COLORS.error} strokeWidth={2.2} />
                   </View>
-                  <Text style={styles.summaryLabel}>Pendente</Text>
-                  <Text style={styles.summaryValue}>R$ {report.totalPending.toFixed(2)}</Text>
+                  <Text style={styles.summaryLabel}>Total Pendente</Text>
+                  <Text style={[styles.summaryValue, styles.summaryValuePending]}>R$ {report.totalPending.toFixed(2)}</Text>
                   <Text style={styles.summarySubtext}>A receber</Text>
-                </View>
-                <View style={[styles.summaryCard, styles.summaryCardSecondary, styles.summaryCardQuantity]}>
-                  <View style={[styles.summaryIconContainer, styles.summaryIconQuantity]}>
-                    <Package size={19} color={COLORS.mediumBlue} strokeWidth={2.2} />
-                  </View>
-                  <Text style={styles.summaryLabel}>Quantidade</Text>
-                  <Text style={[styles.summaryValue, styles.summaryValueQuantity]}>{report.quantitySold}</Text>
-                  <Text style={styles.summarySubtext}>unidades</Text>
                 </View>
               </View>
             </View>
@@ -274,21 +343,22 @@ const styles = StyleSheet.create({
   dateLabel: { color: COLORS.textDark, fontWeight: '700', fontSize: 15 },
   summaryGrid: { gap: 12, marginBottom: 16 },
   summaryCard: { backgroundColor: COLORS.white, borderRadius: 12, borderWidth: 1, borderColor: COLORS.borderGray, padding: 14, elevation: 1 },
-  summaryCardPrimary: { borderLeftWidth: 4, borderLeftColor: COLORS.green },
+  summaryCardPrimary: { borderLeftWidth: 4, borderLeftColor: COLORS.mediumBlue },
   summaryPrimaryContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   summaryPrimaryInfo: { flex: 1, minWidth: 0 },
   summarySecondaryRow: { flexDirection: 'row', gap: 12 },
   summaryCardSecondary: { flex: 1, minWidth: 0 },
-  summaryCardPending: { borderLeftWidth: 3, borderLeftColor: COLORS.yellow },
-  summaryCardQuantity: { borderLeftWidth: 3, borderLeftColor: COLORS.mediumBlue },
+  summaryCardReceived: { borderLeftWidth: 3, borderLeftColor: COLORS.green },
+  summaryCardPending: { borderLeftWidth: 3, borderLeftColor: COLORS.error },
   summaryIconContainer: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  summaryIconReceived: { backgroundColor: '#ECFDF5' },
-  summaryIconPending: { width: 32, height: 32, backgroundColor: '#FFFBEB', marginBottom: 8 },
-  summaryIconQuantity: { width: 32, height: 32, backgroundColor: '#EFF6FF', marginBottom: 8 },
+  summaryIconSold: { backgroundColor: '#EFF6FF' },
+  summaryIconReceived: { width: 32, height: 32, backgroundColor: '#ECFDF5', marginBottom: 8 },
+  summaryIconPending: { width: 32, height: 32, backgroundColor: '#FEF2F2', marginBottom: 8 },
   summaryLabel: { fontSize: 12, color: COLORS.textMedium, fontWeight: '600' },
   summaryValue: { fontSize: 17, fontWeight: '700', color: COLORS.textDark, marginTop: 4 },
-  summaryValuePrimary: { fontSize: 22, color: COLORS.green, marginTop: 2 },
-  summaryValueQuantity: { color: COLORS.mediumBlue },
+  summaryValuePrimary: { fontSize: 22, color: COLORS.mediumBlue, marginTop: 2 },
+  summaryValueReceived: { color: COLORS.green },
+  summaryValuePending: { color: COLORS.error },
   summarySubtext: { fontSize: 11, color: COLORS.textLight, marginTop: 3 },
   sectionCard: { backgroundColor: COLORS.white, borderRadius: 12, borderWidth: 1, borderColor: COLORS.borderGray, padding: 16, marginBottom: 16 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
@@ -316,6 +386,7 @@ const styles = StyleSheet.create({
   productQuantity: { color: COLORS.textMedium, fontSize: 12, marginTop: 2 },
   productValue: { color: COLORS.textDark, fontSize: 13, fontWeight: '700', marginLeft: 8 },
   summarySkeletonText: { flex: 1 },
-  skeletonIcon: { borderRadius: 10, marginBottom: 12 },
+  summarySkeletonIcon: { borderRadius: 10 },
+  summarySecondarySkeletonIcon: { borderRadius: 10, marginBottom: 8 },
   skeletonSpacing: { marginBottom: 6 },
 });

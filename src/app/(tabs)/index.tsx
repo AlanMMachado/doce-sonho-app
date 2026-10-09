@@ -30,6 +30,7 @@ export default function DashboardScreen() {
   const [markingPaid, setMarkingPaid] = useState(false);
   const [kpis, setKpis] = useState({
     totalSold: 0,
+    totalReceived: 0,
     totalPending: 0,
     progressPaid: 0,
     progressTotal: 0,
@@ -67,13 +68,12 @@ export default function DashboardScreen() {
 
       const goal = freshProfile?.daily_goal ?? 200;
       setDailyGoal(goal);
-      const totalGeneral = report.totalSold + report.totalPending;
-
       setKpis({
         totalSold: report.totalSold,
+        totalReceived: report.totalReceived,
         totalPending: report.totalPending,
-        progressPaid: Math.min((report.totalSold / goal) * 100, 100),
-        progressTotal: Math.min((totalGeneral / goal) * 100, 100),
+        progressPaid: Math.min((report.totalReceived / goal) * 100, 100),
+        progressTotal: Math.min((report.totalSold / goal) * 100, 100),
       });
     } catch (error) {
       console.error('Erro ao carregar dados do dashboard:', error);
@@ -162,23 +162,23 @@ export default function DashboardScreen() {
           <View style={styles.content}>
             <View style={styles.kpiContainer}>
               <View style={styles.kpiCard}>
-                <View style={[styles.kpiIconContainer, styles.kpiIconReceived]}>
-                  <Wallet size={21} color={COLORS.green} strokeWidth={2.2} />
+                <View style={[styles.kpiIconContainer, styles.kpiIconSold]}>
+                  <Wallet size={21} color={COLORS.mediumBlue} strokeWidth={2.2} />
                 </View>
                 <Text style={styles.kpiLabel}>Total Vendido</Text>
-                <Text style={styles.kpiValue}>R$ {kpis.totalSold.toFixed(2)}</Text>
+                <Text style={[styles.kpiValue, styles.kpiValueSold]}>R$ {kpis.totalSold.toFixed(2)}</Text>
                 <Text style={styles.kpiSubtext}>
-                  {state.sales.filter(s => s.status === 'PAGO').length} vendas
+                  Vendas pagas e pendentes
                 </Text>
               </View>
               <View style={styles.kpiCard}>
                 <View style={[styles.kpiIconContainer, styles.kpiIconPending]}>
-                  <Clock size={21} color={COLORS.yellow} strokeWidth={2.2} />
+                  <Clock size={21} color={COLORS.error} strokeWidth={2.2} />
                 </View>
-                <Text style={styles.kpiLabel}>Pendente</Text>
-                <Text style={styles.kpiValue}>R$ {kpis.totalPending.toFixed(2)}</Text>
+                <Text style={styles.kpiLabel}>Total Pendente</Text>
+                <Text style={[styles.kpiValue, styles.kpiValuePending]}>R$ {kpis.totalPending.toFixed(2)}</Text>
                 <Text style={styles.kpiSubtext}>
-                  {state.sales.filter(s => s.status === 'PENDENTE').length} vendas
+                  Saldo em aberto
                 </Text>
               </View>
             </View>
@@ -193,10 +193,10 @@ export default function DashboardScreen() {
                 <View style={[styles.progressFillPaid, { width: `${kpis.progressPaid}%` }]} />
               </View>
               <View style={styles.goalFooter}>
-                <Text style={[styles.goalText, styles.goalTextPaid]}>Pago: R$ {kpis.totalSold.toFixed(2)}</Text>
+                <Text style={[styles.goalText, styles.goalTextPaid]}>Recebido: R$ {kpis.totalReceived.toFixed(2)}</Text>
                 <Text style={[styles.goalText, styles.goalTextPending]}>Pendente: R$ {kpis.totalPending.toFixed(2)}</Text>
                 <Text style={styles.goalText}>
-                  Total: R$ {(kpis.totalSold + kpis.totalPending).toFixed(2)} de R$ {dailyGoal.toFixed(2)}
+                  Total vendido: R$ {kpis.totalSold.toFixed(2)} de R$ {dailyGoal.toFixed(2)}
                 </Text>
               </View>
             </View>
@@ -270,10 +270,12 @@ const styles = StyleSheet.create({
   kpiContainer: { flexDirection: 'row', gap: 12, marginBottom: 16 },
   kpiCard: { flex: 1, backgroundColor: COLORS.white, borderRadius: 12, borderWidth: 1, borderColor: COLORS.borderGray, padding: 16 },
   kpiIconContainer: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  kpiIconReceived: { backgroundColor: '#ECFDF5' },
-  kpiIconPending: { backgroundColor: '#FFFBEB' },
+  kpiIconSold: { backgroundColor: '#EFF6FF' },
+  kpiIconPending: { backgroundColor: '#FEF2F2' },
   kpiLabel: { fontSize: 12, color: COLORS.textMedium, fontWeight: '600', marginBottom: 4 },
   kpiValue: { fontSize: 20, fontWeight: 'bold', color: COLORS.textDark, marginBottom: 4 },
+  kpiValueSold: { color: COLORS.mediumBlue },
+  kpiValuePending: { color: COLORS.error },
   kpiSubtext: { fontSize: 11, color: COLORS.textMedium },
   goalCard: { backgroundColor: COLORS.white, borderRadius: 12, borderWidth: 1, borderColor: COLORS.borderGray, padding: 20, marginBottom: 16 },
   goalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },

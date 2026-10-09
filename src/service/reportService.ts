@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
-import { formatLocalDate, getLocalDateKey, getUtcDateRange } from '@/lib/utils/dateUtils';
-import { ReportParams, ReportResponse, ReportSeriesPoint } from '@/types/Report';
+import { addLocalDays, formatLocalDate, getLocalDateKey, getUtcDateRange } from '@/lib/utils/dateUtils';
+import { ReportParams, ReportResponse, ReportSeriesPoint, ReportView } from '@/types/Report';
 
 function normalizeProductText(value: unknown): string {
   return String(value ?? '')
@@ -11,13 +11,22 @@ function normalizeProductText(value: unknown): string {
     .toLocaleLowerCase();
 }
 
-function calculateInterval(params: ReportParams): { startDate: string; endDate: string; view: 'month' | 'year' } {
+function calculateInterval(params: ReportParams): { startDate: string; endDate: string; view: ReportView } {
   if (params.startDate && params.endDate) {
-    return { startDate: params.startDate, endDate: params.endDate, view: params.view ?? 'month' };
+    const fallbackView = params.period === 'day' || params.period === 'week' ? params.period : 'month';
+    return { startDate: params.startDate, endDate: params.endDate, view: params.view ?? fallbackView };
   }
 
   const today = new Date();
   const todayStr = formatLocalDate(today);
+
+  if (params.view === 'day') {
+    return { startDate: todayStr, endDate: todayStr, view: 'day' };
+  }
+
+  if (params.view === 'week') {
+    return { startDate: addLocalDays(todayStr, -6), endDate: todayStr, view: 'week' };
+  }
 
   if (params.view === 'year') {
     const year = params.year ?? today.getFullYear();
@@ -37,11 +46,9 @@ function calculateInterval(params: ReportParams): { startDate: string; endDate: 
 
   switch (params.period) {
     case 'day':
-      return { startDate: todayStr, endDate: todayStr, view: 'month' };
+      return { startDate: todayStr, endDate: todayStr, view: 'day' };
     case 'week': {
-      const start = new Date(today);
-      start.setDate(today.getDate() - 7);
-      return { startDate: formatLocalDate(start), endDate: todayStr, view: 'month' };
+      return { startDate: addLocalDays(todayStr, -6), endDate: todayStr, view: 'week' };
     }
     case 'month': {
       const start = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -85,6 +92,7 @@ export const ReportService = {
     const productsById = new Map((products ?? []).map(product => [product.id, product]));
 
     let totalSold = 0;
+    let totalReceived = 0;
     let totalPending = 0;
     let quantitySold = 0;
     const productMap: Record<string, { product: string; quantity: number; totalValue: number }> = {};
@@ -92,11 +100,16 @@ export const ReportService = {
     const seriesMap: Record<string, { grossValue: number; receivedValue: number }> = {};
 
     for (const sale of sales ?? []) {
+      const grossValue = sale.total_price ?? 0;
+      const paidValue = Math.min(Math.max(sale.amount_paid ?? 0, 0), grossValue);
+      const receivedValue = sale.status === 'PAGO'
+        ? grossValue
+        : sale.status === 'PENDENTE'
+          ? paidValue
+          : 0;
       const saleDate = getLocalDateKey(String(sale.date ?? ''));
-      const seriesKey = view === 'year' ? saleDate.slice(0, 7) : saleDate.slice(8, 10);
+      const seriesKey = view === 'year' ? saleDate.slice(0, 7) : saleDate;
       if (seriesKey) {
-        const grossValue = sale.total_price ?? 0;
-        const receivedValue = sale.status === 'PAGO' ? grossValue : sale.amount_paid ?? 0;
         const current = seriesMap[seriesKey] ?? { grossValue: 0, receivedValue: 0 };
         seriesMap[seriesKey] = {
           grossValue: current.grossValue + grossValue,
@@ -111,12 +124,9 @@ export const ReportService = {
       customerMap[customerKey].totalSpent += sale.total_price ?? 0;
       customerMap[customerKey].purchaseCount += 1;
 
-      if (sale.status === 'PAGO') {
-        totalSold += sale.total_price ?? 0;
-      } else if (sale.status === 'PENDENTE') {
-        totalSold += sale.amount_paid ?? 0;
-        totalPending += (sale.total_price ?? 0) - (sale.amount_paid ?? 0);
-      }
+      totalSold += grossValue;
+      totalReceived += receivedValue;
+      if (sale.status === 'PENDENTE') totalPending += grossValue - paidValue;
 
       for (const item of (sale.items as any[]) ?? []) {
         quantitySold += item.quantity ?? 0;
@@ -140,21 +150,31 @@ export const ReportService = {
       .sort((a, b) => b.quantity - a.quantity)
       .slice(0, 5);
 
-    const year = params.year ?? new Date().getFullYear();
-    const month = params.month ?? new Date().getMonth() + 1;
-    const daysInMonth = new Date(year, month, 0).getDate();
+    const seriesYear = Number(startDate.slice(0, 4));
+    const seriesMonth = Number(startDate.slice(5, 7));
+    const daysInMonth = new Date(seriesYear, seriesMonth, 0).getDate();
     const series: ReportSeriesPoint[] = view === 'year'
       ? Array.from({ length: 12 }, (_, index) => {
-        const key = `${year}-${String(index + 1).padStart(2, '0')}`;
+        const key = `${seriesYear}-${String(index + 1).padStart(2, '0')}`;
         return { label: String(index + 1).padStart(2, '0'), ...(seriesMap[key] ?? { grossValue: 0, receivedValue: 0 }) };
       })
-      : Array.from({ length: daysInMonth }, (_, index) => {
-        const key = String(index + 1).padStart(2, '0');
-        return { label: key, ...(seriesMap[key] ?? { grossValue: 0, receivedValue: 0 }) };
+      : Array.from({ length: view === 'month' ? daysInMonth : 0 }, (_, index) => {
+        const date = `${seriesYear}-${String(seriesMonth).padStart(2, '0')}-${String(index + 1).padStart(2, '0')}`;
+        return { label: date.slice(8, 10), ...(seriesMap[date] ?? { grossValue: 0, receivedValue: 0 }) };
       });
+
+    if (view === 'day' || view === 'week') {
+      for (let date = startDate; date <= endDate; date = addLocalDays(date, 1)) {
+        series.push({
+          label: `${date.slice(8, 10)}/${date.slice(5, 7)}`,
+          ...(seriesMap[date] ?? { grossValue: 0, receivedValue: 0 }),
+        });
+      }
+    }
 
     return {
       totalSold,
+      totalReceived,
       totalPending,
       quantitySold,
       series,

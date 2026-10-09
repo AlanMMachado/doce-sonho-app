@@ -67,7 +67,7 @@ export default function ReportsScreen() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [loadedReport, setLoadedReport] = useState<{ key: string; data: ReportResponse } | null>(null);
-  const [loadError, setLoadError] = useState(false);
+  const [loadErrorKey, setLoadErrorKey] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
   const [chartMetric, setChartMetric] = useState<ChartMetric>('gross');
   const requestIdRef = useRef(0);
@@ -77,7 +77,7 @@ export default function ReportsScreen() {
   const loadReport = async () => {
     const requestedKey = periodKey;
     const requestId = ++requestIdRef.current;
-    setLoadError(false);
+    setLoadErrorKey(null);
 
     try {
       const data = await ReportService.generate(user!.id, { view, year, month });
@@ -86,7 +86,7 @@ export default function ReportsScreen() {
     } catch (error) {
       if (requestId !== requestIdRef.current) return;
       console.error('Erro ao carregar relatório:', error);
-      setLoadError(true);
+      setLoadErrorKey(requestedKey);
       setLoadedReport(current => current?.key === requestedKey ? current : null);
     }
   };
@@ -127,6 +127,8 @@ export default function ReportsScreen() {
       0
     );
   }, [chartMetric, report]);
+  const hasCurrentLoadError = loadErrorKey === periodKey;
+  const waitingForPeriod = !report && !hasCurrentLoadError;
   const hasSales = report ? report.totalSold > 0 || report.totalPending > 0 || report.quantitySold > 0 : false;
 
   return (
@@ -151,7 +153,7 @@ export default function ReportsScreen() {
         </View>
       </View>
 
-      {loading || retrying ? (
+      {loading || retrying || waitingForPeriod ? (
         <ScrollView scrollEnabled={false} style={styles.content}>
           <View style={styles.summaryGrid}>{[1, 2, 3].map(i => <View key={i} style={styles.summaryCard}><SkeletonBlock width={40} height={40} style={styles.skeletonIcon} /><SkeletonBlock width="60%" height={12} style={styles.skeletonSpacing} /><SkeletonBlock width="80%" height={20} style={styles.skeletonSpacing} /><SkeletonBlock width="50%" height={11} /></View>)}</View>
           <View style={styles.sectionCard}><SkeletonBlock width="55%" height={16} style={styles.skeletonSpacing} /><SkeletonBlock width="100%" height={160} /></View>
@@ -164,7 +166,7 @@ export default function ReportsScreen() {
       ) : (
         <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
           <View style={styles.content}>
-            {loadError && <View style={styles.inlineError}><Text style={styles.inlineErrorText}>Não foi possível atualizar os dados deste período.</Text></View>}
+            {hasCurrentLoadError && <View style={styles.inlineError}><Text style={styles.inlineErrorText}>Não foi possível atualizar os dados deste período.</Text></View>}
             <View style={styles.summaryGrid}>
               <View style={styles.summaryCard}><Text style={styles.summaryIcon}>💰</Text><Text style={styles.summaryLabel}>Recebido</Text><Text style={styles.summaryValue}>R$ {report.totalSold.toFixed(2)}</Text><Text style={styles.summarySubtext}>{report.quantitySold} unidades vendidas</Text></View>
               <View style={styles.summaryCard}><Text style={styles.summaryIcon}>⏱️</Text><Text style={styles.summaryLabel}>Pendente</Text><Text style={styles.summaryValue}>R$ {report.totalPending.toFixed(2)}</Text><Text style={styles.summarySubtext}>A receber</Text></View>

@@ -268,15 +268,21 @@ export default function CustomerDetailsScreen() {
           <View style={styles.metricsGrid}>
             {[0, 1].map(row => (
               <View key={row} style={styles.metricsRow}>
-                <MetricCardSkeleton style={{ flex: 1 }} />
-                <MetricCardSkeleton style={{ flex: 1 }} />
+                <MetricCardSkeleton
+                  color={row === 0 ? COLORS.mediumBlue : '#059669'}
+                  style={{ flex: 1 }}
+                />
+                <MetricCardSkeleton
+                  color={row === 0 ? '#ea580c' : COLORS.error}
+                  style={{ flex: 1 }}
+                />
               </View>
             ))}
           </View>
           <View style={styles.historicoSection}>
             <SkeletonBlock width="50%" height={16} style={{ marginBottom: 16 }} />
-            <SkeletonCard lines={3} />
-            <SkeletonCard lines={3} />
+            <SkeletonCard lines={3} style={styles.saleSkeletonCard} />
+            <SkeletonCard lines={3} style={styles.saleSkeletonCard} />
           </View>
         </ScrollView>
       ) : !customer ? (
@@ -733,5 +739,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.textDark,
     marginBottom: 16,
+  },
+  saleSkeletonCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.borderGray,
   },
 });

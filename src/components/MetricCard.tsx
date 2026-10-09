@@ -13,9 +13,9 @@ interface MetricCardProps {
   style?: ViewStyle;
 }
 
-export function MetricCardSkeleton({ style }: { style?: ViewStyle }) {
+export function MetricCardSkeleton({ style, color = COLORS.borderGray }: { style?: ViewStyle; color?: string }) {
   return (
-    <View style={[styles.card, { borderLeftColor: COLORS.borderGray }, style]}>
+    <View style={[styles.card, { borderLeftColor: color }, style]}>
       <View style={styles.header}>
         <SkeletonBlock width={16} height={16} style={{ borderRadius: 8 }} />
         <SkeletonBlock width="55%" height={12} />

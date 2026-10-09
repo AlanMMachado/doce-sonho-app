@@ -114,8 +114,8 @@ export default function DashboardScreen() {
       {loading ? (
         <ScrollView scrollEnabled={false} style={styles.content}>
           <View style={styles.kpiContainer}>
-            {[1, 2].map(i => (
-              <View key={i} style={styles.kpiCard}>
+            {[styles.kpiCardSold, styles.kpiCardPending].map((cardStyle, index) => (
+              <View key={index} style={[styles.kpiCard, cardStyle]}>
                 <SkeletonBlock width={40} height={40} style={{ borderRadius: 10, marginBottom: 12 }} />
                 <SkeletonBlock width="60%" height={12} style={{ marginBottom: 4 }} />
                 <SkeletonBlock width="80%" height={20} style={{ marginBottom: 4 }} />
@@ -161,7 +161,7 @@ export default function DashboardScreen() {
         <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
           <View style={styles.content}>
             <View style={styles.kpiContainer}>
-              <View style={styles.kpiCard}>
+              <View style={[styles.kpiCard, styles.kpiCardSold]}>
                 <View style={[styles.kpiIconContainer, styles.kpiIconSold]}>
                   <Wallet size={21} color={COLORS.mediumBlue} strokeWidth={2.2} />
                 </View>
@@ -171,7 +171,7 @@ export default function DashboardScreen() {
                   Vendas pagas e pendentes
                 </Text>
               </View>
-              <View style={styles.kpiCard}>
+              <View style={[styles.kpiCard, styles.kpiCardPending]}>
                 <View style={[styles.kpiIconContainer, styles.kpiIconPending]}>
                   <Clock size={21} color={COLORS.error} strokeWidth={2.2} />
                 </View>
@@ -269,6 +269,8 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 50 },
   kpiContainer: { flexDirection: 'row', gap: 12, marginBottom: 16 },
   kpiCard: { flex: 1, backgroundColor: COLORS.white, borderRadius: 12, borderWidth: 1, borderColor: COLORS.borderGray, padding: 16 },
+  kpiCardSold: { borderLeftWidth: 4, borderLeftColor: COLORS.mediumBlue },
+  kpiCardPending: { borderLeftWidth: 4, borderLeftColor: COLORS.error },
   kpiIconContainer: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
   kpiIconSold: { backgroundColor: '#EFF6FF' },
   kpiIconPending: { backgroundColor: '#FEF2F2' },

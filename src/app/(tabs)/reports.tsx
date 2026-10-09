@@ -234,8 +234,8 @@ export default function ReportsScreen() {
               </View>
             </View>
             <View style={styles.summarySecondaryRow}>
-              {[1, 2].map(i => (
-                <View key={i} style={[styles.summaryCard, styles.summaryCardSecondary]}>
+              {[styles.summaryCardReceived, styles.summaryCardPending].map((cardStyle, index) => (
+                <View key={index} style={[styles.summaryCard, styles.summaryCardSecondary, cardStyle]}>
                   <SkeletonBlock width={32} height={32} style={styles.summarySecondarySkeletonIcon} />
                   <SkeletonBlock width="65%" height={12} style={styles.skeletonSpacing} />
                   <SkeletonBlock width="80%" height={20} style={styles.skeletonSpacing} />

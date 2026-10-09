@@ -158,12 +158,12 @@ export default function ShipmentDetailsScreen() {
       {loading ? (
         <ScrollView style={styles.content} scrollEnabled={false}>
           <View style={styles.kpisGrid}>
-            <MetricCardSkeleton style={{ width: '48%' }} />
-            <MetricCardSkeleton style={{ width: '48%' }} />
-            <MetricCardSkeleton style={{ width: '48%' }} />
-            <MetricCardSkeleton style={{ width: '48%' }} />
+            <MetricCardSkeleton color={COLORS.mediumBlue} style={{ width: '48%' }} />
+            <MetricCardSkeleton color="#ea580c" style={{ width: '48%' }} />
+            <MetricCardSkeleton color="#059669" style={{ width: '48%' }} />
+            <MetricCardSkeleton color="#059669" style={{ width: '48%' }} />
           </View>
-          <MetricCardSkeleton style={{ marginBottom: 16 }} />
+          <MetricCardSkeleton color={COLORS.error} style={{ marginBottom: 16 }} />
           <View style={styles.produtosSection}>
             <View style={styles.sectionHeader}>
               <SkeletonBlock width="35%" height={16} />
@@ -187,8 +187,8 @@ export default function ShipmentDetailsScreen() {
               <SkeletonBlock width="25%" height={16} />
               <SkeletonBlock width={30} height={22} style={{ borderRadius: 12 }} />
             </View>
-            <SkeletonCard lines={3} />
-            <SkeletonCard lines={3} />
+            <SkeletonCard lines={3} style={styles.saleSkeletonCard} />
+            <SkeletonCard lines={3} style={styles.saleSkeletonCard} />
           </View>
         </ScrollView>
       ) : !shipment ? (
@@ -490,6 +490,10 @@ const styles = StyleSheet.create({
   },
   produtoItemEsgotado: {
     borderLeftColor: COLORS.error,
+  },
+  saleSkeletonCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.borderGray,
   },
   produtoHeader: {
     flexDirection: 'row',

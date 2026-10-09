@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { formatLocalDate, getLocalDateKey, getUtcDateRange } from '@/lib/utils/dateUtils';
 import { ReportParams, ReportResponse, ReportSeriesPoint } from '@/types/Report';
 
 function normalizeProductText(value: unknown): string {
@@ -16,7 +17,7 @@ function calculateInterval(params: ReportParams): { startDate: string; endDate: 
   }
 
   const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
+  const todayStr = formatLocalDate(today);
 
   if (params.view === 'year') {
     const year = params.year ?? today.getFullYear();
@@ -40,11 +41,11 @@ function calculateInterval(params: ReportParams): { startDate: string; endDate: 
     case 'week': {
       const start = new Date(today);
       start.setDate(today.getDate() - 7);
-      return { startDate: start.toISOString().split('T')[0], endDate: todayStr, view: 'month' };
+      return { startDate: formatLocalDate(start), endDate: todayStr, view: 'month' };
     }
     case 'month': {
       const start = new Date(today.getFullYear(), today.getMonth(), 1);
-      return { startDate: start.toISOString().split('T')[0], endDate: todayStr, view: 'month' };
+      return { startDate: formatLocalDate(start), endDate: todayStr, view: 'month' };
     }
     default:
       return { startDate: todayStr, endDate: todayStr, view: 'month' };
@@ -54,13 +55,14 @@ function calculateInterval(params: ReportParams): { startDate: string; endDate: 
 export const ReportService = {
   async generate(userId: string, params: ReportParams): Promise<ReportResponse> {
     const { startDate, endDate, view } = calculateInterval(params);
+    const dateRange = getUtcDateRange(startDate, endDate);
 
     const { data: sales, error } = await supabase
       .from('sales')
       .select('customer_id, customer_name, date, total_price, status, amount_paid, items:sale_items(quantity, subtotal, product_type, product_flavor, product_id)')
       .eq('user_id', userId)
-      .gte('date', `${startDate}T00:00:00Z`)
-      .lte('date', `${endDate}T23:59:59Z`);
+      .gte('date', dateRange.start)
+      .lt('date', dateRange.endExclusive);
 
     if (error) throw error;
 
@@ -89,7 +91,7 @@ export const ReportService = {
     const seriesMap: Record<string, number> = {};
 
     for (const sale of sales ?? []) {
-      const saleDate = String(sale.date ?? '').slice(0, 10);
+      const saleDate = getLocalDateKey(String(sale.date ?? ''));
       const seriesKey = view === 'year' ? saleDate.slice(0, 7) : saleDate.slice(8, 10);
       if (seriesKey) seriesMap[seriesKey] = (seriesMap[seriesKey] ?? 0) + (sale.total_price ?? 0);
 

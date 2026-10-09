@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { formatLocalDate } from '@/lib/utils/dateUtils';
 import { Customer, CustomerCreateParams, CustomerUpdateParams } from '../types/Customer';
 
 export const CustomerService = {
@@ -6,7 +7,7 @@ export const CustomerService = {
     const { data, error } = await supabase
       .from('customers')
       .upsert(
-        { user_id: userId, name, registered_at: new Date().toISOString().split('T')[0] },
+        { user_id: userId, name, registered_at: formatLocalDate() },
         { onConflict: 'user_id,name', ignoreDuplicates: true }
       )
       .select()
@@ -26,7 +27,7 @@ export const CustomerService = {
       .insert({
         user_id: userId,
         name: customer.name,
-        registered_at: customer.registered_at ?? new Date().toISOString().split('T')[0],
+        registered_at: customer.registered_at ?? formatLocalDate(),
       })
       .select()
       .single();

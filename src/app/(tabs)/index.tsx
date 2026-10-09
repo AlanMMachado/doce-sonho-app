@@ -12,6 +12,7 @@ import { ReportService } from '@/service/reportService';
 import { SaleService } from '@/service/saleService';
 import { Product } from '@/types/Product';
 import { Sale } from '@/types/Sale';
+import { formatLocalDate } from '@/lib/utils/dateUtils';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -36,7 +37,7 @@ export default function DashboardScreen() {
 
   const loadData = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = formatLocalDate();
 
       const recentSales = await SaleService.getRecent(user!.id, 10);
       dispatch({ type: 'SET_SALES', payload: recentSales });

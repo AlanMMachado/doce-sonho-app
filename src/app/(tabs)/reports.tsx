@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useScreenData } from '@/hooks/useScreenData';
 import { ReportService } from '@/service/reportService';
 import { ReportResponse } from '@/types/Report';
-import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Clock, Package, Wallet } from 'lucide-react-native';
 import React, { useMemo, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
@@ -155,7 +155,26 @@ export default function ReportsScreen() {
 
       {loading || retrying || waitingForPeriod ? (
         <ScrollView scrollEnabled={false} style={styles.content}>
-          <View style={styles.summaryGrid}>{[1, 2, 3].map(i => <View key={i} style={styles.summaryCard}><SkeletonBlock width={40} height={40} style={styles.skeletonIcon} /><SkeletonBlock width="60%" height={12} style={styles.skeletonSpacing} /><SkeletonBlock width="80%" height={20} style={styles.skeletonSpacing} /><SkeletonBlock width="50%" height={11} /></View>)}</View>
+          <View style={styles.summaryGrid}>
+            <View style={[styles.summaryCard, styles.summaryCardPrimary]}>
+              <SkeletonBlock width={40} height={40} style={styles.skeletonIcon} />
+              <View style={styles.summarySkeletonText}>
+                <SkeletonBlock width="35%" height={12} style={styles.skeletonSpacing} />
+                <SkeletonBlock width="45%" height={22} style={styles.skeletonSpacing} />
+                <SkeletonBlock width="55%" height={11} />
+              </View>
+            </View>
+            <View style={styles.summarySecondaryRow}>
+              {[1, 2].map(i => (
+                <View key={i} style={[styles.summaryCard, styles.summaryCardSecondary]}>
+                  <SkeletonBlock width={32} height={32} style={styles.skeletonIcon} />
+                  <SkeletonBlock width="65%" height={12} style={styles.skeletonSpacing} />
+                  <SkeletonBlock width="80%" height={20} style={styles.skeletonSpacing} />
+                  <SkeletonBlock width="55%" height={11} />
+                </View>
+              ))}
+            </View>
+          </View>
           <View style={styles.sectionCard}><SkeletonBlock width="55%" height={16} style={styles.skeletonSpacing} /><SkeletonBlock width="100%" height={160} /></View>
         </ScrollView>
       ) : !report ? (
@@ -168,9 +187,36 @@ export default function ReportsScreen() {
           <View style={styles.content}>
             {hasCurrentLoadError && <View style={styles.inlineError}><Text style={styles.inlineErrorText}>Não foi possível atualizar os dados deste período.</Text></View>}
             <View style={styles.summaryGrid}>
-              <View style={styles.summaryCard}><Text style={styles.summaryIcon}>💰</Text><Text style={styles.summaryLabel}>Recebido</Text><Text style={styles.summaryValue}>R$ {report.totalSold.toFixed(2)}</Text><Text style={styles.summarySubtext}>{report.quantitySold} unidades vendidas</Text></View>
-              <View style={styles.summaryCard}><Text style={styles.summaryIcon}>⏱️</Text><Text style={styles.summaryLabel}>Pendente</Text><Text style={styles.summaryValue}>R$ {report.totalPending.toFixed(2)}</Text><Text style={styles.summarySubtext}>A receber</Text></View>
-              <View style={styles.summaryCard}><Text style={styles.summaryIcon}>📦</Text><Text style={styles.summaryLabel}>Quantidade</Text><Text style={styles.summaryValue}>{report.quantitySold}</Text><Text style={styles.summarySubtext}>unidades</Text></View>
+              <View style={[styles.summaryCard, styles.summaryCardPrimary]}>
+                <View style={styles.summaryPrimaryContent}>
+                  <View style={[styles.summaryIconContainer, styles.summaryIconReceived]}>
+                    <Wallet size={22} color={COLORS.green} strokeWidth={2.2} />
+                  </View>
+                  <View style={styles.summaryPrimaryInfo}>
+                    <Text style={styles.summaryLabel}>Recebido</Text>
+                    <Text style={[styles.summaryValue, styles.summaryValuePrimary]}>R$ {report.totalSold.toFixed(2)}</Text>
+                    <Text style={styles.summarySubtext}>{report.quantitySold} unidades vendidas</Text>
+                  </View>
+                </View>
+              </View>
+              <View style={styles.summarySecondaryRow}>
+                <View style={[styles.summaryCard, styles.summaryCardSecondary, styles.summaryCardPending]}>
+                  <View style={[styles.summaryIconContainer, styles.summaryIconPending]}>
+                    <Clock size={19} color={COLORS.yellow} strokeWidth={2.2} />
+                  </View>
+                  <Text style={styles.summaryLabel}>Pendente</Text>
+                  <Text style={styles.summaryValue}>R$ {report.totalPending.toFixed(2)}</Text>
+                  <Text style={styles.summarySubtext}>A receber</Text>
+                </View>
+                <View style={[styles.summaryCard, styles.summaryCardSecondary, styles.summaryCardQuantity]}>
+                  <View style={[styles.summaryIconContainer, styles.summaryIconQuantity]}>
+                    <Package size={19} color={COLORS.mediumBlue} strokeWidth={2.2} />
+                  </View>
+                  <Text style={styles.summaryLabel}>Quantidade</Text>
+                  <Text style={[styles.summaryValue, styles.summaryValueQuantity]}>{report.quantitySold}</Text>
+                  <Text style={styles.summarySubtext}>unidades</Text>
+                </View>
+              </View>
             </View>
 
             <View style={styles.sectionCard}>
@@ -226,11 +272,23 @@ const styles = StyleSheet.create({
   periodArrow: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   dateSelector: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: COLORS.white, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, marginTop: 10, marginBottom: 5, borderWidth: 1, borderColor: COLORS.borderGray },
   dateLabel: { color: COLORS.textDark, fontWeight: '700', fontSize: 15 },
-  summaryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 16 },
-  summaryCard: { width: '48%', backgroundColor: COLORS.white, borderRadius: 12, borderWidth: 1, borderColor: COLORS.borderGray, padding: 14 },
-  summaryIcon: { fontSize: 25, marginBottom: 8 },
-  summaryLabel: { fontSize: 12, color: COLORS.textMedium },
+  summaryGrid: { gap: 12, marginBottom: 16 },
+  summaryCard: { backgroundColor: COLORS.white, borderRadius: 12, borderWidth: 1, borderColor: COLORS.borderGray, padding: 14, elevation: 1 },
+  summaryCardPrimary: { borderLeftWidth: 4, borderLeftColor: COLORS.green },
+  summaryPrimaryContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  summaryPrimaryInfo: { flex: 1, minWidth: 0 },
+  summarySecondaryRow: { flexDirection: 'row', gap: 12 },
+  summaryCardSecondary: { flex: 1, minWidth: 0 },
+  summaryCardPending: { borderLeftWidth: 3, borderLeftColor: COLORS.yellow },
+  summaryCardQuantity: { borderLeftWidth: 3, borderLeftColor: COLORS.mediumBlue },
+  summaryIconContainer: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  summaryIconReceived: { backgroundColor: '#ECFDF5' },
+  summaryIconPending: { width: 32, height: 32, backgroundColor: '#FFFBEB', marginBottom: 8 },
+  summaryIconQuantity: { width: 32, height: 32, backgroundColor: '#EFF6FF', marginBottom: 8 },
+  summaryLabel: { fontSize: 12, color: COLORS.textMedium, fontWeight: '600' },
   summaryValue: { fontSize: 17, fontWeight: '700', color: COLORS.textDark, marginTop: 4 },
+  summaryValuePrimary: { fontSize: 22, color: COLORS.green, marginTop: 2 },
+  summaryValueQuantity: { color: COLORS.mediumBlue },
   summarySubtext: { fontSize: 11, color: COLORS.textLight, marginTop: 3 },
   sectionCard: { backgroundColor: COLORS.white, borderRadius: 12, borderWidth: 1, borderColor: COLORS.borderGray, padding: 16, marginBottom: 16 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
@@ -257,6 +315,7 @@ const styles = StyleSheet.create({
   productName: { color: COLORS.textDark, fontSize: 14, fontWeight: '600' },
   productQuantity: { color: COLORS.textMedium, fontSize: 12, marginTop: 2 },
   productValue: { color: COLORS.textDark, fontSize: 13, fontWeight: '700', marginLeft: 8 },
+  summarySkeletonText: { flex: 1 },
   skeletonIcon: { borderRadius: 10, marginBottom: 12 },
   skeletonSpacing: { marginBottom: 6 },
 });

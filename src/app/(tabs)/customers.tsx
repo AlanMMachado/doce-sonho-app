@@ -10,6 +10,7 @@ import { Customer } from '@/types/Customer';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useRouter } from 'expo-router';
+import { AlertCircle, CircleCheck, Users } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text, TextInput } from 'react-native-paper';
@@ -113,18 +114,24 @@ export default function CustomersScreen() {
 
             <View style={styles.summaryContainer}>
               <View style={styles.summaryCard}>
-                <Text style={styles.summaryIcon}>👥</Text>
+                <View style={[styles.summaryIconContainer, styles.summaryIconCustomers]}>
+                  <Users size={22} color={COLORS.mediumBlue} strokeWidth={2.2} />
+                </View>
                 <Text style={styles.summaryValue}>{summary.totalCustomers}</Text>
                 <Text style={styles.summaryLabel}>Clientes Ativos</Text>
               </View>
               <View style={styles.summaryCard}>
-                <Text style={styles.summaryIcon}>🔴</Text>
+                <View style={[styles.summaryIconContainer, styles.summaryIconDebtors]}>
+                  <AlertCircle size={22} color={COLORS.error} strokeWidth={2.2} />
+                </View>
                 <Text style={styles.summaryValue}>{summary.debtors}</Text>
                 <Text style={styles.summaryLabel}>Devedores</Text>
                 <Text style={styles.summarySubtext}>R$ {(summary.totalOwed || 0).toFixed(2)}</Text>
               </View>
               <View style={styles.summaryCard}>
-                <Text style={styles.summaryIcon}>🟢</Text>
+                <View style={[styles.summaryIconContainer, styles.summaryIconCurrent]}>
+                  <CircleCheck size={22} color={COLORS.green} strokeWidth={2.2} />
+                </View>
                 <Text style={styles.summaryValue}>{summary.current}</Text>
                 <Text style={styles.summaryLabel}>Em Dia</Text>
                 <Text style={styles.summarySubtext}>R$ {(summary.totalPaid || 0).toFixed(2)}</Text>
@@ -169,7 +176,9 @@ export default function CustomersScreen() {
 
               {filteredCustomers.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <Text style={styles.emptyIcon}>👥</Text>
+                  <View style={[styles.emptyIconContainer, styles.summaryIconCustomers]}>
+                    <Users size={32} color={COLORS.mediumBlue} strokeWidth={2} />
+                  </View>
                   <Text style={styles.emptyText}>
                     {search ? 'Nenhum cliente encontrado' : 'Nenhum cliente nesta categoria'}
                   </Text>
@@ -237,7 +246,10 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 50 },
   summaryContainer: { flexDirection: 'row', gap: 12, marginBottom: 20 },
   summaryCard: { flex: 1, backgroundColor: COLORS.white, borderRadius: 12, borderWidth: 1, borderColor: COLORS.borderGray, padding: 16, alignItems: 'center' },
-  summaryIcon: { fontSize: 24, marginBottom: 8 },
+  summaryIconContainer: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+  summaryIconCustomers: { backgroundColor: '#EFF6FF' },
+  summaryIconDebtors: { backgroundColor: '#FEF2F2' },
+  summaryIconCurrent: { backgroundColor: '#ECFDF5' },
   summaryValue: { fontSize: 24, fontWeight: 'bold', color: COLORS.textDark, marginBottom: 4 },
   summaryLabel: { fontSize: 12, color: COLORS.textMedium, fontWeight: '600', textAlign: 'center' },
   summarySubtext: { fontSize: 11, color: COLORS.textLight, textAlign: 'center' },
@@ -251,7 +263,7 @@ const styles = StyleSheet.create({
   listSection: { backgroundColor: COLORS.white, borderRadius: 12, borderWidth: 1, borderColor: COLORS.borderGray, padding: 20 },
   sectionTitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.textDark, marginBottom: 16 },
   emptyState: { alignItems: 'center', paddingVertical: 32 },
-  emptyIcon: { fontSize: 48, marginBottom: 12 },
+  emptyIconContainer: { width: 64, height: 64, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
   emptyText: { fontSize: 15, fontWeight: '600', color: COLORS.textDark, marginBottom: 4 },
   emptySubtext: { fontSize: 13, color: COLORS.textMedium, textAlign: 'center' },
   list: { gap: 12 },

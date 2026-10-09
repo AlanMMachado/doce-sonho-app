@@ -15,6 +15,7 @@ import { Sale } from '@/types/Sale';
 import { formatLocalDate } from '@/lib/utils/dateUtils';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
+import { Clock, Wallet } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
@@ -161,8 +162,8 @@ export default function DashboardScreen() {
           <View style={styles.content}>
             <View style={styles.kpiContainer}>
               <View style={styles.kpiCard}>
-                <View style={styles.kpiIconContainer}>
-                  <Text style={styles.kpiIcon}>💰</Text>
+                <View style={[styles.kpiIconContainer, styles.kpiIconReceived]}>
+                  <Wallet size={21} color={COLORS.green} strokeWidth={2.2} />
                 </View>
                 <Text style={styles.kpiLabel}>Total Vendido</Text>
                 <Text style={styles.kpiValue}>R$ {kpis.totalSold.toFixed(2)}</Text>
@@ -171,8 +172,8 @@ export default function DashboardScreen() {
                 </Text>
               </View>
               <View style={styles.kpiCard}>
-                <View style={styles.kpiIconContainer}>
-                  <Text style={styles.kpiIcon}>⏱️</Text>
+                <View style={[styles.kpiIconContainer, styles.kpiIconPending]}>
+                  <Clock size={21} color={COLORS.yellow} strokeWidth={2.2} />
                 </View>
                 <Text style={styles.kpiLabel}>Pendente</Text>
                 <Text style={styles.kpiValue}>R$ {kpis.totalPending.toFixed(2)}</Text>
@@ -268,8 +269,9 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 50 },
   kpiContainer: { flexDirection: 'row', gap: 12, marginBottom: 16 },
   kpiCard: { flex: 1, backgroundColor: COLORS.white, borderRadius: 12, borderWidth: 1, borderColor: COLORS.borderGray, padding: 16 },
-  kpiIconContainer: { width: 40, height: 40, backgroundColor: COLORS.softGray, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  kpiIcon: { fontSize: 20 },
+  kpiIconContainer: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  kpiIconReceived: { backgroundColor: '#ECFDF5' },
+  kpiIconPending: { backgroundColor: '#FFFBEB' },
   kpiLabel: { fontSize: 12, color: COLORS.textMedium, fontWeight: '600', marginBottom: 4 },
   kpiValue: { fontSize: 20, fontWeight: 'bold', color: COLORS.textDark, marginBottom: 4 },
   kpiSubtext: { fontSize: 11, color: COLORS.textMedium },

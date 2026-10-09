@@ -9,7 +9,8 @@ export interface ReportParams {
 
 export interface ReportSeriesPoint {
   label: string;
-  value: number;
+  grossValue: number;
+  receivedValue: number;
 }
 
 export interface ReportResponse {

@@ -88,12 +88,20 @@ export const ReportService = {
     let quantitySold = 0;
     const productMap: Record<string, { product: string; quantity: number; totalValue: number }> = {};
     const customerMap: Record<string, { customerName: string; totalSpent: number; purchaseCount: number }> = {};
-    const seriesMap: Record<string, number> = {};
+    const seriesMap: Record<string, { grossValue: number; receivedValue: number }> = {};
 
     for (const sale of sales ?? []) {
       const saleDate = getLocalDateKey(String(sale.date ?? ''));
       const seriesKey = view === 'year' ? saleDate.slice(0, 7) : saleDate.slice(8, 10);
-      if (seriesKey) seriesMap[seriesKey] = (seriesMap[seriesKey] ?? 0) + (sale.total_price ?? 0);
+      if (seriesKey) {
+        const grossValue = sale.total_price ?? 0;
+        const receivedValue = sale.status === 'PAGO' ? grossValue : sale.amount_paid ?? 0;
+        const current = seriesMap[seriesKey] ?? { grossValue: 0, receivedValue: 0 };
+        seriesMap[seriesKey] = {
+          grossValue: current.grossValue + grossValue,
+          receivedValue: current.receivedValue + receivedValue,
+        };
+      }
 
       const customerKey = sale.customer_id ?? sale.customer_name ?? 'unknown';
       if (!customerMap[customerKey]) {
@@ -113,8 +121,8 @@ export const ReportService = {
         quantitySold += item.quantity ?? 0;
 
         const linkedProduct = item.product_id ? productsById.get(item.product_id) : undefined;
-        const type = linkedProduct?.type ?? item.product_type ?? '?';
-        const flavor = linkedProduct?.flavor ?? item.product_flavor ?? '?';
+        const type = item.product_type?.trim() || linkedProduct?.type?.trim() || '?';
+        const flavor = item.product_flavor?.trim() || linkedProduct?.flavor?.trim() || '?';
         const normalizedType = normalizeProductText(type);
         const normalizedFlavor = normalizeProductText(flavor);
         const productKey = JSON.stringify([normalizedType, normalizedFlavor]);
@@ -137,11 +145,11 @@ export const ReportService = {
     const series: ReportSeriesPoint[] = view === 'year'
       ? Array.from({ length: 12 }, (_, index) => {
         const key = `${year}-${String(index + 1).padStart(2, '0')}`;
-        return { label: String(index + 1).padStart(2, '0'), value: seriesMap[key] ?? 0 };
+        return { label: String(index + 1).padStart(2, '0'), ...(seriesMap[key] ?? { grossValue: 0, receivedValue: 0 }) };
       })
       : Array.from({ length: daysInMonth }, (_, index) => {
         const key = String(index + 1).padStart(2, '0');
-        return { label: key, value: seriesMap[key] ?? 0 };
+        return { label: key, ...(seriesMap[key] ?? { grossValue: 0, receivedValue: 0 }) };
       });
 
     return {

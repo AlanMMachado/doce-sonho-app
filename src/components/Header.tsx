@@ -93,7 +93,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     minHeight: 40, // Altura fixa para garantir que a altura do header não mude com base no conteúdo
-    zIndex: 1,
   },
   textContainer: {
     flex: 1,

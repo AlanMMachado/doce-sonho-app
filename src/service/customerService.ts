@@ -2,6 +2,20 @@ import { supabase } from '@/lib/supabase';
 import { formatLocalDate } from '@/lib/utils/dateUtils';
 import { Customer, CustomerCreateParams, CustomerListItem, CustomerUpdateParams } from '../types/Customer';
 
+const CUSTOMER_LIST_FIELDS = 'id, name, total_purchased, total_owed, purchase_count, last_purchase, status';
+
+interface CustomerPageOptions {
+  limit?: number;
+  offset?: number;
+  search?: string;
+  status?: 'devedor' | 'em_dia';
+}
+
+export interface CustomerPage {
+  items: CustomerListItem[];
+  hasMore: boolean;
+}
+
 export const CustomerService = {
   async upsertByName(userId: string, name: string): Promise<Customer> {
     const { data, error } = await supabase
@@ -58,11 +72,36 @@ export const CustomerService = {
   async getAll(userId: string): Promise<CustomerListItem[]> {
     const { data, error } = await supabase
       .from('customers')
-      .select('id, name, total_purchased, total_owed, purchase_count, last_purchase, status')
+      .select(CUSTOMER_LIST_FIELDS)
       .eq('user_id', userId)
       .order('name');
     if (error) throw error;
     return data ?? [];
+  },
+
+  async getPage(userId: string, options: CustomerPageOptions = {}): Promise<CustomerPage> {
+    const limit = Math.min(Math.max(options.limit ?? 25, 1), 100);
+    const offset = Math.max(options.offset ?? 0, 0);
+    let query = supabase
+      .from('customers')
+      .select(CUSTOMER_LIST_FIELDS)
+      .eq('user_id', userId)
+      .order('name')
+      .order('id')
+      .range(offset, offset + limit);
+
+    const search = options.search?.trim();
+    if (search) query = query.ilike('name', `%${search}%`);
+    if (options.status) query = query.eq('status', options.status);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const rows = data ?? [];
+    return {
+      items: rows.slice(0, limit),
+      hasMore: rows.length > limit,
+    };
   },
 
   async update(userId: string, id: string, params: CustomerUpdateParams): Promise<void> {
@@ -109,6 +148,7 @@ export const CustomerService = {
     totalDebtors: number;
     totalAmountOwed: number;
     totalAmountPurchased: number;
+    totalPaid: number;
   }> {
     const { data, error } = await supabase
       .from('customers')
@@ -122,6 +162,7 @@ export const CustomerService = {
       totalDebtors: rows.filter(r => r.status === 'devedor').length,
       totalAmountOwed: rows.reduce((s, r) => s + (r.total_owed ?? 0), 0),
       totalAmountPurchased: rows.reduce((s, r) => s + (r.total_purchased ?? 0), 0),
+      totalPaid: rows.reduce((s, r) => s + (r.total_purchased ?? 0) - (r.total_owed ?? 0), 0),
     };
   },
 };

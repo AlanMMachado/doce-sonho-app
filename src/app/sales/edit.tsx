@@ -10,7 +10,7 @@ import { Product } from '@/types/Product';
 import { Sale, SaleItemForm } from '@/types/Sale';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ActivityIndicator, Text, TextInput } from 'react-native-paper';
 import { PAYMENT_METHODS, normalizePaymentMethod } from '@/constants/PaymentMethods';
@@ -30,6 +30,7 @@ export default function EditSaleScreen() {
     status: 'PENDENTE' as 'PAGO' | 'PENDENTE',
     payment_method: 'PIX'
   });
+  const loadedIdRef = useRef<string | undefined>(undefined);
   
   const getOriginalProductQuantity = (productId: string): number => {
     return (sale?.items ?? []).reduce((total, item) => {
@@ -49,8 +50,6 @@ export default function EditSaleScreen() {
 
   const loadData = useCallback(async () => {
     try {
-      setLoading(true);
-
       const saleData = await SaleService.getById(user!.id, id);
       if (!saleData) {
         alert('Venda não encontrada');
@@ -106,6 +105,7 @@ export default function EditSaleScreen() {
         status: saleData.status,
         payment_method: normalizePaymentMethod(saleData.payment_method) || 'PIX'
       });
+      loadedIdRef.current = id;
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
       alert('Erro ao carregar dados da venda');
@@ -118,6 +118,7 @@ export default function EditSaleScreen() {
   useFocusEffect(
     useCallback(() => {
       if (id) {
+        if (loadedIdRef.current !== id) setLoading(true);
         loadData();
       }
     }, [id, loadData])

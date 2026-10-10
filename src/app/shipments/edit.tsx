@@ -9,7 +9,7 @@ import { ShipmentProductForm } from '@/types/Shipment';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Minus, Package, Plus, Trash2 } from 'lucide-react-native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ActivityIndicator, Text, TextInput } from 'react-native-paper';
 
@@ -22,11 +22,11 @@ export default function EditShipmentScreen() {
   const [notes, setNotes] = useState('');
   const [productConfigs, setProductConfigs] = useState<ProductConfig[]>([]);
   const [products, setProducts] = useState<ShipmentProductForm[]>([]);
+  const loadedIdRef = useRef<string | undefined>(undefined);
 
 
   const loadData = useCallback(async () => {
     try {
-      setLoading(true);
       const shipment = await ShipmentService.getById(user!.id, id);
       if (shipment) {
         setNotes(shipment.notes || '');
@@ -44,6 +44,7 @@ export default function EditShipmentScreen() {
       }
       const configs = await ProductConfigService.getAll(user!.id);
       setProductConfigs(configs);
+      loadedIdRef.current = id;
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
@@ -53,7 +54,10 @@ export default function EditShipmentScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (id) loadData();
+      if (id) {
+        if (loadedIdRef.current !== id) setLoading(true);
+        loadData();
+      }
     }, [id, loadData])
   );
 

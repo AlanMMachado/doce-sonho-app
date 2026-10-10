@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { formatLocalDate } from '@/lib/utils/dateUtils';
-import { Customer, CustomerCreateParams, CustomerUpdateParams } from '../types/Customer';
+import { Customer, CustomerCreateParams, CustomerListItem, CustomerUpdateParams } from '../types/Customer';
 
 export const CustomerService = {
   async upsertByName(userId: string, name: string): Promise<Customer> {
@@ -55,10 +55,10 @@ export const CustomerService = {
     return data ?? null;
   },
 
-  async getAll(userId: string): Promise<Customer[]> {
+  async getAll(userId: string): Promise<CustomerListItem[]> {
     const { data, error } = await supabase
       .from('customers')
-      .select('*')
+      .select('id, name, total_purchased, total_owed, purchase_count, last_purchase, status')
       .eq('user_id', userId)
       .order('name');
     if (error) throw error;

@@ -5,20 +5,19 @@ import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScreenData } from '@/hooks/useScreenData';
 import { CustomerService } from '@/service/customerService';
-import { SaleService } from '@/service/saleService';
-import { Customer } from '@/types/Customer';
+import { CustomerListItem } from '@/types/Customer';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useRouter } from 'expo-router';
 import { AlertCircle, CircleCheck, Users } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text, TextInput } from 'react-native-paper';
 
 export default function CustomersScreen() {
   const { user } = useAuth();
   const router = useRouter();
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customers, setCustomers] = useState<CustomerListItem[]>([]);
   const [filter, setFilter] = useState<'todos' | 'devedores' | 'em_dia'>('todos');
   const [search, setSearch] = useState('');
   const [summary, setSummary] = useState({
@@ -32,17 +31,19 @@ export default function CustomersScreen() {
   const loadData = async () => {
     try {
       const data = await CustomerService.getAll(user!.id);
-      setCustomers(data);
+      const totalDebtors = data.filter(customer => customer.status === 'devedor').length;
+      const totalOwed = data.reduce((sum, customer) => sum + (customer.total_owed || 0), 0);
+      const totalPaid = data.reduce(
+        (sum, customer) => sum + (customer.total_purchased || 0) - (customer.total_owed || 0),
+        0
+      );
 
-      const [stats, totalPaid] = await Promise.all([
-        CustomerService.getStats(user!.id),
-        SaleService.getTotalPaid(user!.id),
-      ]);
+      setCustomers(data);
       setSummary({
-        totalCustomers: stats.totalCustomers,
-        debtors: stats.totalDebtors,
-        current: stats.totalCustomers - stats.totalDebtors,
-        totalOwed: stats.totalAmountOwed,
+        totalCustomers: data.length,
+        debtors: totalDebtors,
+        current: data.length - totalDebtors,
+        totalOwed,
         totalPaid,
       });
     } catch (error) {
@@ -52,14 +53,15 @@ export default function CustomersScreen() {
 
   const { loading, refreshing, onRefresh } = useScreenData(loadData);
 
-  const filteredCustomers = customers.filter(customer => {
-    const matchSearch = customer.name.toLowerCase().includes(search.toLowerCase());
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredCustomers = useMemo(() => customers.filter(customer => {
+    const matchSearch = customer.name.toLowerCase().includes(normalizedSearch);
     const matchFilter =
       filter === 'todos' ||
       (filter === 'devedores' && customer.status === 'devedor') ||
       (filter === 'em_dia' && customer.status === 'em_dia');
     return matchSearch && matchFilter;
-  });
+  }), [customers, filter, normalizedSearch]);
 
   return (
     <View style={styles.container}>
@@ -190,7 +192,7 @@ export default function CustomersScreen() {
                 <View style={styles.list}>
                   {filteredCustomers.map((customer) => (
                     <TouchableOpacity
-                      key={customer.name}
+                      key={customer.id}
                       style={styles.customerCard}
                       onPress={() => router.push(`/customers/${encodeURIComponent(customer.name)}` as any)}
                     >

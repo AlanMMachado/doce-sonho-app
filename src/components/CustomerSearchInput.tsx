@@ -1,7 +1,7 @@
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { CustomerService } from '@/service/customerService';
-import { Customer } from '@/types/Customer';
+import { CustomerListItem } from '@/types/Customer';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Keyboard, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text, TextInput } from 'react-native-paper';
@@ -9,7 +9,7 @@ import { Text, TextInput } from 'react-native-paper';
 interface CustomerSearchInputProps {
   value: string;
   onChangeText: (text: string) => void;
-  onCustomerSelect?: (customer: Customer | null) => void;
+  onCustomerSelect?: (customer: CustomerListItem | null) => void;
   onDropdownStateChange?: (isOpen: boolean) => void;
   placeholder?: string;
   label?: string;
@@ -50,11 +50,11 @@ export default function CustomerSearchInput({
   error = false
 }: CustomerSearchInputProps) {
   const { user } = useAuth();
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [suggestions, setSuggestions] = useState<Customer[]>([]);
+  const [customers, setCustomers] = useState<CustomerListItem[]>([]);
+  const [suggestions, setSuggestions] = useState<CustomerListItem[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerListItem | null>(null);
   const isSelectingRef = useRef(false);
 
   useEffect(() => {
@@ -103,7 +103,7 @@ export default function CustomerSearchInput({
     onDropdownStateChange?.(open);
   }, [suggestions, value, onDropdownStateChange]);
 
-  const selectCustomer = useCallback((customer: Customer) => {
+  const selectCustomer = useCallback((customer: CustomerListItem) => {
     if (isSelectingRef.current) return;
     isSelectingRef.current = true;
     setSuggestions([]);

@@ -11,6 +11,11 @@ export interface Customer {
   updated_at: string;
 }
 
+export type CustomerListItem = Pick<
+  Customer,
+  'id' | 'name' | 'total_purchased' | 'total_owed' | 'purchase_count' | 'last_purchase' | 'status'
+>;
+
 export interface CustomerCreateParams {
   name: string;
   registered_at?: string;

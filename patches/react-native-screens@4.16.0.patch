@@ -1,0 +1,13 @@
+diff --git a/android/src/main/java/com/swmansion/rnscreens/Screen.kt b/android/src/main/java/com/swmansion/rnscreens/Screen.kt
+index 2b7dcff55f7c7cc3129a9b548181c78b6a4d3e74..39edbb6fca6eccbd9dd68286526d8ab2eae2acb1 100644
+--- a/android/src/main/java/com/swmansion/rnscreens/Screen.kt
++++ b/android/src/main/java/com/swmansion/rnscreens/Screen.kt
+@@ -498,7 +498,7 @@ class Screen(
+                     // wrong index if we called `startViewTransition` on the views on new arch.
+                     // We add a simple View to bump the number of children to make it work.
+                     // TODO: find a better way to handle this scenario
+-                    it.addView(View(context), i)
++                    it.addView(View(context))
+                 } else {
+                     child?.let { view -> it.startViewTransition(view) }
+                 }

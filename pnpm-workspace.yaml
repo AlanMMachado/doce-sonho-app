@@ -1,2 +1,4 @@
 allowBuilds:
   unrs-resolver: true
+patchedDependencies:
+  react-native-screens@4.16.0: patches/react-native-screens@4.16.0.patch

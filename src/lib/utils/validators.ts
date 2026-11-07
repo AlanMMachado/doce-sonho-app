@@ -7,3 +7,8 @@ export function isValidDate(data: string): boolean {
   const date = new Date(ano, mes - 1, dia);
   return date.getFullYear() === ano && date.getMonth() === mes - 1 && date.getDate() === dia;
 }
+
+// Mesma regra do CHECK de customers.phone: só dígitos, com DDD e sem o 55.
+export function isValidPhone(digits: string): boolean {
+  return /^[1-9]\d{9,10}$/.test(digits);
+}

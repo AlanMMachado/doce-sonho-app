@@ -5,4 +5,5 @@ export type Profile = {
   email: string;
   birth_date: string;
   daily_goal: number;
+  charge_message_template?: string | null;
 };

@@ -4,12 +4,18 @@ import ModernModal from '@/components/ModernModal';
 import SaleCard from '@/components/SaleCard';
 import SkeletonCard, { SkeletonBlock } from '@/components/SkeletonCard';
 import { COLORS } from '@/constants/Colors';
+import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useScreenData } from '@/hooks/useScreenData';
+import { formatCents, formatPhone } from '@/lib/utils/formatters';
+import { getSaleItemName, sortSalesOldestFirst } from '@/lib/utils/saleUtils';
+import { isValidPhone } from '@/lib/utils/validators';
+import { buildChargeMessage, openWhatsappChat } from '@/lib/utils/whatsapp';
 import { CustomerService } from '@/service/customerService';
 import { SaleService } from '@/service/saleService';
-import { Customer } from '@/types/Customer';
-import { Sale } from '@/types/Sale';
+import { Customer, CustomerUpdateParams } from '@/types/Customer';
+import { Sale, SaleItem } from '@/types/Sale';
+import { FontAwesome } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AlertCircle, Clock, DollarSign, Edit, Info, ShoppingCart, Trash2, XCircle } from 'lucide-react-native';
@@ -24,20 +30,12 @@ type CustomerWithSales = Customer & {
   firstPurchase: string;
 };
 
-function formatCents(cents: number): string {
-  return (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
 // Simula, no client, a mesma alocação "mais antiga primeiro" que a RPC
 // apply_partial_payment faz no banco — só para dar um preview ao usuário antes
 // de confirmar. A RPC continua sendo a única fonte de verdade que efetivamente
 // aplica o pagamento; se a regra de alocação mudar um dia, atualizar os dois.
 function simulatePartialPayment(pendingSales: Sale[], amount: number) {
-  const sorted = [...pendingSales].sort((a, b) => {
-    const diff = new Date(a.date).getTime() - new Date(b.date).getTime();
-    if (diff !== 0) return diff;
-    return (a.created_at ?? '').localeCompare(b.created_at ?? '');
-  });
+  const sorted = sortSalesOldestFirst(pendingSales);
 
   let remaining = amount;
   let fullyPaidCount = 0;
@@ -62,6 +60,7 @@ function simulatePartialPayment(pendingSales: Sale[], amount: number) {
 
 export default function CustomerDetailsScreen() {
   const { user } = useAuth();
+  const { state } = useApp();
   const { name } = useLocalSearchParams<{ name: string }>();
   const router = useRouter();
   const [customer, setCustomer] = useState<CustomerWithSales | null>(null);
@@ -71,7 +70,10 @@ export default function CustomerDetailsScreen() {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
   const [editError, setEditError] = useState('');
+  const [chargeErrorVisible, setChargeErrorVisible] = useState(false);
+  const [noPhoneModalVisible, setNoPhoneModalVisible] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [deletingCustomer, setDeletingCustomer] = useState(false);
   const [partialModalVisible, setPartialModalVisible] = useState(false);
@@ -155,24 +157,51 @@ export default function CustomerDetailsScreen() {
     }
   };
 
-  const getProductName = (productId: string | null, item?: { product_type?: string; product_flavor?: string }) => {
-    if (item?.product_type && item?.product_flavor) return `${item.product_type} ${item.product_flavor}`;
-    return 'Produto removido';
-  };
+  const getProductName = (_productId: string | null, item?: SaleItem) => getSaleItemName(item);
 
-  const handleRename = async () => {
+  const handleSaveCustomer = async () => {
     const trimmed = editName.trim();
     if (!trimmed) { setEditError('Nome obrigatório'); return; }
-    if (trimmed === customer?.name) { setEditModalVisible(false); return; }
+
+    const phone = editPhoneDigits || null;
+    const changes: CustomerUpdateParams = {};
+    if (trimmed !== customer?.name) changes.name = trimmed;
+    if (phone !== (customer?.phone ?? null)) changes.phone = phone;
+    if (Object.keys(changes).length === 0) { setEditModalVisible(false); return; }
+
     try {
       setActionLoading(true);
-      await CustomerService.update(user!.id, customer!.id, { name: trimmed });
-      setEditModalVisible(false);
-      router.replace(`/customers/${encodeURIComponent(trimmed)}` as any);
+      await CustomerService.update(user!.id, customer!.id, changes);
+      if (changes.name) {
+        setEditModalVisible(false);
+        router.replace(`/customers/${encodeURIComponent(trimmed)}` as any);
+      } else {
+        await loadCustomer();
+        setEditModalVisible(false);
+      }
     } catch (e: any) {
-      setEditError(e.message ?? 'Erro ao renomear');
+      setEditError(e.message ?? 'Erro ao salvar');
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleCharge = async () => {
+    if (!customer) return;
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (!customer.phone) {
+      setNoPhoneModalVisible(true);
+      return;
+    }
+    if (customer.pendingSales.length === 0) return;
+
+    try {
+      const message = buildChargeMessage(customer.name, customer.pendingSales, state.profile?.charge_message_template);
+      await openWhatsappChat(customer.phone, message);
+    } catch (error) {
+      console.error('Erro ao abrir o WhatsApp:', error);
+      setChargeErrorVisible(true);
     }
   };
 
@@ -199,6 +228,11 @@ export default function CustomerDetailsScreen() {
     const last = new Date(customer.last_purchase);
     return Math.floor((today.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
   };
+
+  const canCharge = !!customer?.phone && customer.pendingSales.length > 0;
+
+  const editPhoneDigits = editPhone.replace(/\D/g, '');
+  const editPhoneInvalid = editPhoneDigits.length > 0 && !isValidPhone(editPhoneDigits);
 
   const partialAmountReais = partialAmountCents / 100;
   const partialDisplayValue = `R$ ${formatCents(partialAmountCents)}`;
@@ -232,14 +266,34 @@ export default function CustomerDetailsScreen() {
   return (
     <View style={styles.container}>
       <Header
-        title="Histórico de compras"
+        title="Histórico"
         showBackButton
         actions={
           !loading && customer ? (
             <>
               <TouchableOpacity
+                style={[styles.headerWhatsappButton, !canCharge && styles.headerWhatsappButtonDisabled]}
+                disabled={!!customer.phone && !canCharge}
+                onPress={handleCharge}
+                accessibilityRole="button"
+                accessibilityLabel="Cobrar pelo WhatsApp"
+                accessibilityHint={customer.phone ? undefined : 'Cliente sem telefone cadastrado'}
+                accessibilityState={{ disabled: !!customer.phone && !canCharge }}
+              >
+                <FontAwesome
+                  name="whatsapp"
+                  size={20}
+                  color={canCharge ? COLORS.green : COLORS.textLight}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
                 style={styles.headerEditButton}
-                onPress={() => { setEditName(customer.name); setEditError(''); setEditModalVisible(true); }}
+                onPress={() => {
+                  setEditName(customer.name);
+                  setEditPhone(formatPhone(customer.phone ?? ''));
+                  setEditError('');
+                  setEditModalVisible(true);
+                }}
               >
                 <Edit size={20} color={COLORS.mediumBlue} />
               </TouchableOpacity>
@@ -414,22 +468,63 @@ export default function CustomerDetailsScreen() {
         centered
         visible={editModalVisible}
         onClose={() => setEditModalVisible(false)}
-        title="Editar Nome"
-        primaryAction={{ label: actionLoading ? 'Salvando...' : 'Salvar', onPress: handleRename }}
+        title="Editar Cliente"
+        primaryAction={{
+          label: 'Salvar',
+          onPress: handleSaveCustomer,
+          loading: actionLoading,
+          disabled: editPhoneInvalid,
+        }}
         secondaryAction={{ label: 'Cancelar', onPress: () => setEditModalVisible(false) }}>
         <TextInput
           value={editName}
           onChangeText={(t) => { setEditName(t); setEditError(''); }}
           mode="outlined"
+          label="Nome"
           placeholder="Nome do cliente"
           outlineColor={editError ? COLORS.error : COLORS.borderGray}
           activeOutlineColor={editError ? COLORS.error : COLORS.mediumBlue}
-          style={{ backgroundColor: COLORS.white, marginBottom: 4 }}
+          style={{ backgroundColor: COLORS.white, marginBottom: 12 }}
           autoFocus
         />
-        {!!editError && (
-          <Text style={{ fontSize: 12, color: COLORS.error, marginTop: 4 }}>{editError}</Text>
-        )}
+        <TextInput
+          value={editPhone}
+          selection={{ start: editPhone.length, end: editPhone.length }}
+          onSelectionChange={() => {}}
+          onChangeText={(t) => { setEditPhone(formatPhone(t)); setEditError(''); }}
+          mode="outlined"
+          label="Telefone (opcional)"
+          placeholder="(11) 99999-8888"
+          keyboardType="phone-pad"
+          outlineColor={editPhoneInvalid ? COLORS.error : COLORS.borderGray}
+          activeOutlineColor={editPhoneInvalid ? COLORS.error : COLORS.mediumBlue}
+          style={{ backgroundColor: COLORS.white }}
+        />
+        <Text style={[styles.editHint, !!(editError || editPhoneInvalid) && styles.editHintError]}>
+          {editError || (editPhoneInvalid ? 'Número incompleto. Informe o DDD e o telefone.' : 'Com DDD. Deixe em branco para remover.')}
+        </Text>
+      </ModernModal>
+
+      <ModernModal
+        centered
+        visible={chargeErrorVisible}
+        onClose={() => setChargeErrorVisible(false)}
+        title="Não foi possível abrir o WhatsApp"
+        primaryAction={{ label: 'Entendi', onPress: () => setChargeErrorVisible(false) }}>
+        <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>
+          Verifique se o WhatsApp está instalado ou se há um navegador disponível e tente novamente.
+        </Text>
+      </ModernModal>
+
+      <ModernModal
+        centered
+        visible={noPhoneModalVisible}
+        onClose={() => setNoPhoneModalVisible(false)}
+        title="Telefone não cadastrado"
+        primaryAction={{ label: 'Entendi', onPress: () => setNoPhoneModalVisible(false) }}>
+        <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>
+          {customer?.name} não tem número de telefone cadastrado.
+        </Text>
       </ModernModal>
 
       <ModernModal
@@ -586,6 +681,20 @@ const styles = StyleSheet.create({
   },
   statusTextDevedor: {},
   statusTextEmDia: {},
+  headerWhatsappButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: COLORS.softGray,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.green,
+  },
+  headerWhatsappButtonDisabled: {
+    borderColor: COLORS.borderGray,
+    opacity: 0.6,
+  },
   headerEditButton: {
     width: 40,
     height: 40,
@@ -605,6 +714,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.error,
+  },
+  editHint: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: COLORS.textLight,
+    marginTop: 8,
+  },
+  editHintError: {
+    color: COLORS.error,
   },
   metricsGrid: {
     gap: 12,

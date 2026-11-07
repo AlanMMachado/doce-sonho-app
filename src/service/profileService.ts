@@ -22,7 +22,7 @@ export class ProfileService {
     return profile;
   }
 
-  static async update(userId: string, data: Partial<Pick<Profile, 'full_name' | 'birth_date' | 'daily_goal'>>): Promise<void> {
+  static async update(userId: string, data: Partial<Pick<Profile, 'full_name' | 'birth_date' | 'daily_goal' | 'charge_message_template'>>): Promise<void> {
     const { error } = await supabase
       .from('profiles')
       .update(data)

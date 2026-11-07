@@ -10,7 +10,9 @@ export const COLORS = {
   purple: '#a855f7',
   green: '#10b981',
   yellow: '#f59e0b',
-  
+  emerald: '#059669',
+  orange: '#ea580c',
+
   // UI Colors
   white: '#ffffff',
   lightGray: '#f8f9fa',

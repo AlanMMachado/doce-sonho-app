@@ -57,6 +57,7 @@ CREATE TABLE customers (
   id              UUID          DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id         UUID          REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   name            TEXT          NOT NULL,
+  phone           TEXT          CHECK (phone ~ '^[1-9][0-9]{9,10}$'), -- só dígitos, com DDD e sem o 55
   total_purchased DECIMAL(10,2) NOT NULL DEFAULT 0,  -- maintained by trigger
   total_owed      DECIMAL(10,2) NOT NULL DEFAULT 0,  -- maintained by trigger
   purchase_count  INTEGER       NOT NULL DEFAULT 0,  -- maintained by trigger
@@ -106,6 +107,7 @@ CREATE TABLE profiles (
   email       TEXT          NOT NULL,
   birth_date  TEXT          NOT NULL,
   daily_goal  DECIMAL(10,2) NOT NULL DEFAULT 200.00,
+  charge_message_template TEXT, -- NULL usa o template padrão do app
   created_at  TIMESTAMPTZ   DEFAULT now(),
   updated_at  TIMESTAMPTZ   DEFAULT now()
 );

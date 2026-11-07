@@ -107,7 +107,7 @@ export const CustomerService = {
   async update(userId: string, id: string, params: CustomerUpdateParams): Promise<void> {
     const { error } = await supabase
       .from('customers')
-      .update({ name: params.name })
+      .update({ name: params.name, phone: params.phone })
       .eq('user_id', userId)
       .eq('id', id);
     if (error) {

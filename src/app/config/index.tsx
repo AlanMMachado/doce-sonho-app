@@ -3,7 +3,7 @@ import ModernModal from '@/components/ModernModal';
 import { COLORS } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
-import { ChevronRight, LogOut, Package, User } from 'lucide-react-native';
+import { ChevronRight, LogOut, MessageCircle, Package, User } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
@@ -24,23 +24,29 @@ export default function ConfigScreen() {
 
   const configItems = [
     {
+      title: 'Meu Perfil',
+      description: 'Edite seus dados pessoais e meta diária',
+      onPress: () => router.push('/config/profile'),
+      icon: User,
+    },
+    {
       title: 'Produtos',
       description: 'Configure tipos de produto, preços base e promoções',
       onPress: () => router.push('/config/products'),
       icon: Package,
     },
     {
-      title: 'Meu Perfil',
-      description: 'Edite seus dados pessoais e meta diária',
-      onPress: () => router.push('/config/profile'),
-      icon: User,
+      title: 'Mensagem de cobrança',
+      description: 'Personalize a mensagem de cobrança enviada pelo Whatspp.',
+      onPress: () => router.push('/config/charge-message'),
+      icon: MessageCircle,
     },
+
   ];
 
   return (
     <View style={styles.container}>
       <Header title="Configurações" showBackButton />
-
       <ScrollView style={styles.content}>
         <View style={styles.configList}>
           {configItems.map((item, index) => {

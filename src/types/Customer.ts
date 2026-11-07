@@ -1,6 +1,7 @@
 export interface Customer {
   id: string;
   name: string;
+  phone: string | null;
   total_purchased: number;
   total_owed: number;
   purchase_count: number;
@@ -23,4 +24,5 @@ export interface CustomerCreateParams {
 
 export interface CustomerUpdateParams {
   name?: string;
+  phone?: string | null;
 }

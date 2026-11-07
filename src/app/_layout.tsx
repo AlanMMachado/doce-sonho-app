@@ -1,6 +1,7 @@
 import { AppProvider } from '@/contexts/AppContext';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { FontAwesome } from '@expo/vector-icons';
 import { Nunito_400Regular, Nunito_500Medium, Nunito_600SemiBold, Nunito_700Bold, useFonts } from '@expo-google-fonts/nunito';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
@@ -62,6 +63,7 @@ export default function RootLayout() {
     Nunito_500Medium,
     Nunito_600SemiBold,
     Nunito_700Bold,
+    ...FontAwesome.font,
   });
 
   useEffect(() => {

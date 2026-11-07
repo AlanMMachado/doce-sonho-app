@@ -197,7 +197,12 @@ export default function CustomerDetailsScreen() {
     if (customer.pendingSales.length === 0) return;
 
     try {
-      const message = buildChargeMessage(customer.name, customer.pendingSales, state.profile?.charge_message_template);
+      const message = buildChargeMessage(
+        customer.name,
+        customer.pendingSales,
+        state.profile?.charge_message_template,
+        state.profile?.pix_key
+      );
       await openWhatsappChat(customer.phone, message);
     } catch (error) {
       console.error('Erro ao abrir o WhatsApp:', error);

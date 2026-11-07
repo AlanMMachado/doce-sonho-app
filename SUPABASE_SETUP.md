@@ -108,6 +108,7 @@ CREATE TABLE profiles (
   birth_date  TEXT          NOT NULL,
   daily_goal  DECIMAL(10,2) NOT NULL DEFAULT 200.00,
   charge_message_template TEXT, -- NULL usa o template padrão do app
+  pix_key     TEXT          CHECK (char_length(pix_key) <= 77), -- NULL significa sem chave cadastrada
   created_at  TIMESTAMPTZ   DEFAULT now(),
   updated_at  TIMESTAMPTZ   DEFAULT now()
 );

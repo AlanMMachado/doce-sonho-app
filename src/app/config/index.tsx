@@ -25,7 +25,7 @@ export default function ConfigScreen() {
   const configItems = [
     {
       title: 'Meu Perfil',
-      description: 'Edite seus dados pessoais e meta diária',
+      description: 'Edite seus dados pessoais, chave Pix e meta diária',
       onPress: () => router.push('/config/profile'),
       icon: User,
     },

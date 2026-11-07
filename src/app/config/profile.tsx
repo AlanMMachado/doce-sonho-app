@@ -9,7 +9,7 @@ import { dateToISO, formatDate } from '@/lib/utils/formatters';
 import { isValidDate } from '@/lib/utils/validators';
 import { ProfileService } from '@/service/profileService';
 import { useRouter } from 'expo-router';
-import { Calendar, Target, User } from 'lucide-react-native';
+import { Calendar, KeyRound, Target, User } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -19,12 +19,14 @@ export default function ProfileScreen() {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [pixRemovalModalVisible, setPixRemovalModalVisible] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
     full_name: '',
     birth_date: '',
     daily_goal: '',
     email: '',
+    pix_key: '',
   });
 
   useEffect(() => {
@@ -35,6 +37,7 @@ export default function ProfileScreen() {
         birth_date: `${day}/${month}/${year}`,
         daily_goal: state.profile.daily_goal.toString(),
         email: state.profile.email,
+        pix_key: state.profile.pix_key ?? '',
       });
     }
   }, [state.profile]);
@@ -43,7 +46,7 @@ export default function ProfileScreen() {
     setErrors(prev => { const next = { ...prev }; delete next[field]; return next; });
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     const newErrors: Record<string, string> = {};
     if (!form.full_name.trim()) newErrors.full_name = 'Nome é obrigatório';
     if (!form.birth_date.trim()) newErrors.birth_date = 'Data é obrigatória';
@@ -54,12 +57,23 @@ export default function ProfileScreen() {
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
+    if (state.profile?.pix_key && !form.pix_key.trim()) {
+      setPixRemovalModalVisible(true);
+      return;
+    }
+    saveProfile();
+  };
+
+  const saveProfile = async () => {
+    const pixKey = form.pix_key.trim() || null;
+
     setSaving(true);
     try {
       await ProfileService.update(user!.id, {
         full_name: form.full_name.trim(),
         birth_date: dateToISO(form.birth_date),
-        daily_goal: goalNum,
+        daily_goal: parseFloat(form.daily_goal),
+        ...(pixKey !== (state.profile?.pix_key ?? null) && { pix_key: pixKey }),
       });
       await reloadProfile();
       setSuccessModalVisible(true);
@@ -133,6 +147,19 @@ export default function ProfileScreen() {
               />
             </View>
 
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Chave Pix (opcional)</Text>
+              <ModernInput
+                placeholder="CPF, telefone, e-mail ou chave aleatória"
+                value={form.pix_key}
+                onChangeText={(t) => setForm(p => ({ ...p, pix_key: t }))}
+                autoCapitalize="none"
+                autoCorrect={false}
+                maxLength={77}
+                icon={<KeyRound width={20} height={20} color={COLORS.mediumBlue} />}
+              />
+            </View>
+
             <ModernButton
               title={saving ? 'Salvando...' : 'Salvar'}
               onPress={handleSave}
@@ -148,6 +175,26 @@ export default function ProfileScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ModernModal
+        visible={pixRemovalModalVisible}
+        onClose={() => setPixRemovalModalVisible(false)}
+        title="Remover chave Pix"
+        primaryAction={{
+          label: 'Remover',
+          destructive: true,
+          onPress: () => {
+            setPixRemovalModalVisible(false);
+            saveProfile();
+          },
+        }}
+        secondaryAction={{ label: 'Cancelar', onPress: () => setPixRemovalModalVisible(false) }}>
+        <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>
+          {state.profile?.charge_message_template?.includes('{chave_pix}')
+            ? 'Sua mensagem de cobrança usa esta chave. Sem ela, as próximas cobranças serão enviadas sem a chave Pix.'
+            : 'Sua chave Pix será removida do perfil.'}
+        </Text>
+      </ModernModal>
 
       <ModernModal
         visible={successModalVisible}

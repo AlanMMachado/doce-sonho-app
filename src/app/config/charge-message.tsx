@@ -8,6 +8,7 @@ import {
   buildChargeMessage,
   DEFAULT_CHARGE_TEMPLATE,
   findUnknownVariables,
+  normalizeChargeTemplate,
   splitBoldSegments,
 } from '@/lib/utils/whatsapp';
 import { ProfileService } from '@/service/profileService';
@@ -20,7 +21,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ActivityIndicator, Text } from 'react-native-paper';
 
 const MAX_TEMPLATE_LENGTH = 1000;
-const SAMPLE_CUSTOMER_NAME = 'Maria';
+const SAMPLE_CUSTOMER_NAME = 'Maria Silva';
 
 const sampleItem = (id: string, quantity: number, flavor: string, subtotal: number): SaleItem => ({
   id,
@@ -54,7 +55,7 @@ const SAMPLE_SALES: Sale[] = [
 
 type Feedback = { state: 'neutral' | 'warning' | 'error'; text: string };
 
-function getFeedback(template: string): Feedback {
+function getFeedback(template: string, hasPixKey: boolean): Feedback {
   if (!template.trim()) {
     return { state: 'error', text: 'Escreva a mensagem ou restaure o padrão' };
   }
@@ -63,6 +64,10 @@ function getFeedback(template: string): Feedback {
   if (unknownVariables.length > 0) {
     const label = unknownVariables.length > 1 ? 'Variáveis desconhecidas' : 'Variável desconhecida';
     return { state: 'error', text: `${label}: ${unknownVariables.join(', ')}` };
+  }
+
+  if (!hasPixKey && template.includes('{chave_pix}')) {
+    return { state: 'error', text: 'Cadastre sua chave em Meu Perfil ou remova {chave_pix} da mensagem' };
   }
 
   const hasSales = template.includes('{compras}');
@@ -85,12 +90,18 @@ export default function ChargeMessageScreen() {
   const [saving, setSaving] = useState(false);
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [restoreModalVisible, setRestoreModalVisible] = useState(false);
+  const [pixModalVisible, setPixModalVisible] = useState(false);
+  const profileLoaded = !!state.profile;
+  const savedTemplate = state.profile?.charge_message_template;
 
   useEffect(() => {
-    if (state.profile) setTemplate(state.profile.charge_message_template ?? DEFAULT_CHARGE_TEMPLATE);
-  }, [state.profile]);
+    // Depende só do template salvo: cadastrar a chave Pix muda o perfil e não pode
+    // descartar o que está sendo editado nesta tela.
+    if (profileLoaded) setTemplate(normalizeChargeTemplate(savedTemplate ?? DEFAULT_CHARGE_TEMPLATE));
+  }, [profileLoaded, savedTemplate]);
 
-  const feedback = getFeedback(template);
+  const pixKey = state.profile?.pix_key;
+  const feedback = getFeedback(template, !state.profile || !!pixKey);
   const saveDisabled = feedback.state === 'error' || !state.profile;
   const restoreDisabled = saving || template === DEFAULT_CHARGE_TEMPLATE;
 
@@ -156,6 +167,8 @@ export default function ChargeMessageScreen() {
                 onChange={setTemplate}
                 maxLength={MAX_TEMPLATE_LENGTH}
                 error={feedback.state === 'error'}
+                disabledVariableKeys={pixKey ? undefined : ['chave_pix']}
+                onDisabledVariablePress={() => setPixModalVisible(true)}
                 onDragActiveChange={setDragging}
               />
 
@@ -187,7 +200,7 @@ export default function ChargeMessageScreen() {
 
               <View style={styles.previewCard}>
                 <Text style={styles.previewText}>
-                  {splitBoldSegments(buildChargeMessage(SAMPLE_CUSTOMER_NAME, SAMPLE_SALES, template)).map((segment, index) => (
+                  {splitBoldSegments(buildChargeMessage(SAMPLE_CUSTOMER_NAME, SAMPLE_SALES, template, pixKey)).map((segment, index) => (
                     <Text key={index} style={segment.bold ? styles.previewBold : styles.previewText}>{segment.text}</Text>
                   ))}
                 </Text>
@@ -219,6 +232,23 @@ export default function ChargeMessageScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ModernModal
+        visible={pixModalVisible}
+        onClose={() => setPixModalVisible(false)}
+        title="Chave Pix não cadastrada"
+        primaryAction={{
+          label: 'Ir para Meu Perfil',
+          onPress: () => {
+            setPixModalVisible(false);
+            router.push('/config/profile');
+          },
+        }}
+        secondaryAction={{ label: 'Agora não', onPress: () => setPixModalVisible(false) }}>
+        <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>
+          Cadastre sua chave Pix em Meu Perfil para usar esta variável.
+        </Text>
+      </ModernModal>
 
       <ModernModal
         visible={restoreModalVisible}

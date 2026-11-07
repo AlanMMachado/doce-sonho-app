@@ -21,9 +21,11 @@ import Animated, { SharedValue, useAnimatedStyle, useSharedValue } from 'react-n
 import { scheduleOnRN } from 'react-native-worklets';
 
 const VARIABLE_COLORS: Record<string, string> = {
-  cliente: COLORS.mediumBlue,
+  primeiro_nome: COLORS.mediumBlue,
+  nome_completo: COLORS.purple,
   compras: COLORS.emerald,
   total: COLORS.orange,
+  chave_pix: COLORS.info,
 };
 
 // Na web não há onTextLayout, então não é possível alinhar as cores nem localizar o soltar.
@@ -98,6 +100,7 @@ function renderSpans(text: string) {
 interface VariableChipProps {
   variableKey: string;
   description: string;
+  disabled: boolean;
   onLayout: (layout: LayoutRectangle) => void;
   onPress: () => void;
   dragValues: DragValues;
@@ -109,6 +112,7 @@ interface VariableChipProps {
 function VariableChip({
   variableKey,
   description,
+  disabled,
   onLayout,
   onPress,
   dragValues,
@@ -120,7 +124,7 @@ function VariableChip({
     const { ghostPosition, dropArea, dropLines, dropOffset } = dragValues;
 
     return Gesture.Pan()
-      .enabled(SUPPORTS_RICH_EDITING)
+      .enabled(SUPPORTS_RICH_EDITING && !disabled)
       .minDistance(6)
       .shouldCancelWhenOutside(false)
       .onStart(event => {
@@ -154,19 +158,20 @@ function VariableChip({
         'worklet';
         scheduleOnRN(onDragEnd, variableKey, success ? dropOffset.get() : null);
       });
-  }, [dragValues, onDragEnd, onDragStart, onDropOffsetChange, variableKey]);
+  }, [disabled, dragValues, onDragEnd, onDragStart, onDropOffsetChange, variableKey]);
 
   return (
     <GestureDetector gesture={gesture}>
       <View collapsable={false} onLayout={(event) => onLayout(event.nativeEvent.layout)}>
         <TouchableOpacity
-          style={[styles.chip, variableFill(variableKey)]}
+          style={[styles.chip, disabled ? styles.chipDisabled : variableFill(variableKey)]}
           onPress={onPress}
           activeOpacity={0.7}
           accessibilityRole="button"
           accessibilityLabel={`Inserir ${description}`}
+          accessibilityHint={disabled ? 'Indisponível no momento' : undefined}
         >
-          <Text style={styles.chipText}>{`{${variableKey}}`}</Text>
+          <Text style={[styles.chipText, disabled && styles.chipTextDisabled]}>{`{${variableKey}}`}</Text>
         </TouchableOpacity>
       </View>
     </GestureDetector>
@@ -178,6 +183,8 @@ interface ChargeTemplateEditorProps {
   onChange: (value: string) => void;
   maxLength: number;
   error?: boolean;
+  disabledVariableKeys?: string[];
+  onDisabledVariablePress?: (key: string) => void;
   onDragActiveChange?: (active: boolean) => void;
 }
 
@@ -186,6 +193,8 @@ export default function ChargeTemplateEditor({
   onChange,
   maxLength,
   error = false,
+  disabledVariableKeys = [],
+  onDisabledVariablePress,
   onDragActiveChange,
 }: ChargeTemplateEditorProps) {
   const dropAreaRef = useRef<DropArea>({ box: EMPTY_LAYOUT, row: EMPTY_LAYOUT, chips: {} });
@@ -293,19 +302,26 @@ export default function ChargeTemplateEditor({
   return (
     <View>
       <View style={styles.chipsRow} onLayout={(event) => updateDropArea({ row: event.nativeEvent.layout })}>
-        {CHARGE_TEMPLATE_VARIABLES.map(variable => (
-          <VariableChip
-            key={variable.key}
-            variableKey={variable.key}
-            description={variable.description}
-            onLayout={layout => updateDropArea({ chips: { ...dropAreaRef.current.chips, [variable.key]: layout } })}
-            onPress={() => commitEdit(insertVariable(valueRef.current, variable.key, selectionRef.current))}
-            dragValues={dragValues}
-            onDragStart={handleDragStart}
-            onDropOffsetChange={setDropOffset}
-            onDragEnd={handleDragEnd}
-          />
-        ))}
+        {CHARGE_TEMPLATE_VARIABLES.map(variable => {
+          const disabled = disabledVariableKeys.includes(variable.key);
+          return (
+            <VariableChip
+              key={variable.key}
+              variableKey={variable.key}
+              description={variable.description}
+              disabled={disabled}
+              onLayout={layout => updateDropArea({ chips: { ...dropAreaRef.current.chips, [variable.key]: layout } })}
+              onPress={() => {
+                if (disabled) onDisabledVariablePress?.(variable.key);
+                else commitEdit(insertVariable(valueRef.current, variable.key, selectionRef.current));
+              }}
+              dragValues={dragValues}
+              onDragStart={handleDragStart}
+              onDropOffsetChange={setDropOffset}
+              onDragEnd={handleDragEnd}
+            />
+          );
+        })}
       </View>
 
       <View style={styles.box} onLayout={(event) => updateDropArea({ box: event.nativeEvent.layout })}>
@@ -368,7 +384,9 @@ export default function ChargeTemplateEditor({
 const styles = StyleSheet.create({
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
   chip: { minHeight: 40, paddingHorizontal: 12, justifyContent: 'center', borderRadius: 8 },
+  chipDisabled: { backgroundColor: COLORS.borderGray },
   chipText: { fontSize: 13, fontFamily: 'Nunito_400Regular', color: COLORS.darkGray },
+  chipTextDisabled: { color: COLORS.textMedium },
   box: { backgroundColor: COLORS.white, borderRadius: 12 },
   input: {
     minHeight: 240,

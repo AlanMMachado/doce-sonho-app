@@ -6,4 +6,5 @@ export type Profile = {
   birth_date: string;
   daily_goal: number;
   charge_message_template?: string | null;
+  pix_key?: string | null;
 };

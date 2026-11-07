@@ -7,7 +7,7 @@ import { Linking, Platform } from 'react-native';
 const BRAZIL_COUNTRY_CODE = '55';
 
 export const DEFAULT_CHARGE_TEMPLATE = [
-  'Olá, *{cliente}*! Tudo bem?',
+  'Olá, *{primeiro_nome}*! Tudo bem?',
   'Segue o resumo das suas compras pendentes:',
   '{compras}',
   '*Total pendente: {total}*',
@@ -15,12 +15,23 @@ export const DEFAULT_CHARGE_TEMPLATE = [
 ].join('\n\n');
 
 export const CHARGE_TEMPLATE_VARIABLES = [
-  { key: 'cliente', description: 'Nome do cliente' },
+  { key: 'primeiro_nome', description: 'Primeiro nome do cliente' },
+  { key: 'nome_completo', description: 'Nome completo do cliente' },
   { key: 'compras', description: 'Lista das compras pendentes' },
   { key: 'total', description: 'Total pendente' },
+  { key: 'chave_pix', description: 'Sua chave Pix' },
 ];
 
 export const TEMPLATE_VARIABLE_PATTERN = /\{([^{}\s]+)\}/g;
+
+// Mensagens salvas antes da troca de {cliente} por {primeiro_nome} continuam válidas.
+export function normalizeChargeTemplate(template: string): string {
+  return template.replace(/\{cliente\}/g, '{primeiro_nome}');
+}
+
+function getFirstName(customerName: string): string {
+  return customerName.trim().split(/\s+/)[0];
+}
 
 export function findUnknownVariables(template: string): string[] {
   const knownKeys = CHARGE_TEMPLATE_VARIABLES.map(variable => variable.key);
@@ -70,7 +81,12 @@ function formatSaleDate(date: string): string {
 
 // Usa *negrito* porque o WhatsApp não renderiza **. O cálculo é feito em centavos
 // para o total bater com customers.total_owed, sem erro de ponto flutuante.
-export function buildChargeMessage(customerName: string, pendingSales: Sale[], template?: string | null): string {
+export function buildChargeMessage(
+  customerName: string,
+  pendingSales: Sale[],
+  template?: string | null,
+  pixKey?: string | null
+): string {
   let totalCents = 0;
 
   const saleBlocks = sortSalesOldestFirst(pendingSales).map(sale => {
@@ -87,14 +103,16 @@ export function buildChargeMessage(customerName: string, pendingSales: Sale[], t
   });
 
   const values: Record<string, string> = {
-    cliente: customerName,
+    primeiro_nome: getFirstName(customerName),
+    nome_completo: customerName.trim(),
     compras: saleBlocks.join('\n\n'),
     total: formatMoney(totalCents),
+    chave_pix: pixKey ?? '',
   };
 
   // Passada única com função: o texto inserido não é reinterpretado, então um nome
   // como "{total}" ou com "$&" não altera o resultado.
-  return (template ?? DEFAULT_CHARGE_TEMPLATE).replace(
+  return normalizeChargeTemplate(template ?? DEFAULT_CHARGE_TEMPLATE).replace(
     TEMPLATE_VARIABLE_PATTERN,
     (match, key: string) => values[key] ?? match
   );

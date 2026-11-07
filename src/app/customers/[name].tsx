@@ -159,6 +159,14 @@ export default function CustomerDetailsScreen() {
 
   const getProductName = (_productId: string | null, item?: SaleItem) => getSaleItemName(item);
 
+  const openEditModal = () => {
+    if (!customer) return;
+    setEditName(customer.name);
+    setEditPhone(formatPhone(customer.phone ?? ''));
+    setEditError('');
+    setEditModalVisible(true);
+  };
+
   const handleSaveCustomer = async () => {
     const trimmed = editName.trim();
     if (!trimmed) { setEditError('Nome obrigatório'); return; }
@@ -293,12 +301,7 @@ export default function CustomerDetailsScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.headerEditButton}
-                onPress={() => {
-                  setEditName(customer.name);
-                  setEditPhone(formatPhone(customer.phone ?? ''));
-                  setEditError('');
-                  setEditModalVisible(true);
-                }}
+                onPress={openEditModal}
               >
                 <Edit size={20} color={COLORS.mediumBlue} />
               </TouchableOpacity>
@@ -522,13 +525,19 @@ export default function CustomerDetailsScreen() {
       </ModernModal>
 
       <ModernModal
-        centered
         visible={noPhoneModalVisible}
         onClose={() => setNoPhoneModalVisible(false)}
         title="Telefone não cadastrado"
-        primaryAction={{ label: 'Entendi', onPress: () => setNoPhoneModalVisible(false) }}>
+        primaryAction={{
+          label: 'Cadastrar telefone',
+          onPress: () => {
+            setNoPhoneModalVisible(false);
+            openEditModal();
+          },
+        }}
+        secondaryAction={{ label: 'Agora não', onPress: () => setNoPhoneModalVisible(false) }}>
         <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 22 }}>
-          {customer?.name} não tem número de telefone cadastrado.
+          Cadastre o telefone de {customer?.name} para enviar a cobrança pelo WhatsApp.
         </Text>
       </ModernModal>
 

@@ -1,5 +1,4 @@
 import Header from '@/components/Header';
-import ModernButton from '@/components/ModernButton';
 import ModernInput from '@/components/ModernInput';
 import ModernModal from '@/components/ModernModal';
 import { COLORS } from '@/constants/Colors';
@@ -11,7 +10,8 @@ import { ProfileService } from '@/service/profileService';
 import { useRouter } from 'expo-router';
 import { Calendar, KeyRound, Target, User } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Text as PaperText } from 'react-native-paper';
 
 export default function ProfileScreen() {
   const { user } = useAuth();
@@ -160,18 +160,28 @@ export default function ProfileScreen() {
               />
             </View>
 
-            <ModernButton
-              title={saving ? 'Salvando...' : 'Salvar'}
-              onPress={handleSave}
-              loading={saving}
-              style={styles.button}
-            />
-            <ModernButton
-              title="Cancelar"
-              variant="secondary"
-              onPress={() => router.back()}
-              disabled={saving}
-            />
+            {/* Botões de Ação */}
+            <View style={styles.actionButtons}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => router.back()}
+                disabled={saving}
+              >
+                <PaperText style={styles.cancelButtonText}>Cancelar</PaperText>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.submitButton, saving && styles.submitButtonDisabled]}
+                onPress={handleSave}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator color={COLORS.white} size={20} />
+                ) : (
+                  <PaperText style={styles.submitButtonText}>Salvar</PaperText>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -218,5 +228,10 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '600', color: COLORS.navy },
   errorText: { fontSize: 12, color: COLORS.error },
   inputReadOnly: { backgroundColor: COLORS.softGray, color: COLORS.textMedium },
-  button: { marginTop: 8 },
+  actionButtons: { flexDirection: 'row', gap: 12, marginTop: 8, marginBottom: 16 },
+  cancelButton: { flex: 1, backgroundColor: COLORS.white, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.borderGray, paddingVertical: 15, alignItems: 'center' },
+  cancelButtonText: { fontSize: 15, fontWeight: '700', color: COLORS.textMedium },
+  submitButton: { flex: 2, backgroundColor: COLORS.mediumBlue, borderRadius: 12, paddingVertical: 15, alignItems: 'center' },
+  submitButtonDisabled: { opacity: 0.5 },
+  submitButtonText: { fontSize: 15, fontWeight: '700', color: COLORS.white },
 });
